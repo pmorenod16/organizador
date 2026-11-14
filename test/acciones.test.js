@@ -55,3 +55,12 @@ test("describir", () => {
   assert.equal(describir({ tipo: "retraso", minutos: 20 }), "Retrasar el resto del día 20 min");
   assert.match(describir({ tipo: "trabajo-horario", diaSemana: 0, inicio: 900, fin: 1140 }), /lunes.*15:00.*19:00/);
 });
+test("evento → perfil.eventosManuales (sirve para días futuros y repetidos)", () => {
+  const { acciones } = validar({ acciones: [{ tipo: "evento", titulo: "Entreno", tipoEvento: "entreno", fecha: "2026-11-17", inicio: "20:00", fin: "21:30", diasSemana: [1] }] });
+  const e = aplicar(estado(), acciones, {});
+  assert.deepEqual((({ titulo, tipo, inicio, repetir }) => ({ titulo, tipo, inicio, repetir }))(e.perfil.eventosManuales[0]), { titulo: "Entreno", tipo: "entreno", inicio: 1200, repetir: { diasSemana: [1] } });
+});
+test("hecho de un objetivo (gym) → dia.hechosObjetivo", () => {
+  const s = estado(); s.perfil.objetivos = [{ id: "gym" }]; s.refs.push("gym");
+  assert.equal(aplicar(s, [{ tipo: "hecho", refId: "gym" }], {}).dia.hechosObjetivo.gym, true);
+});

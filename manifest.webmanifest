@@ -1,0 +1,11 @@
+{
+  "name": "Organizador",
+  "short_name": "Organizador",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#F4F5F8",
+  "theme_color": "#3B5BDB",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

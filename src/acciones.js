@@ -102,13 +102,13 @@ const nuevoId = () => (globalThis.crypto?.randomUUID?.() || `id-${Date.now()}-${
 
 /**
  * Aplica acciones ya validadas. Puro: devuelve un estado nuevo.
- * @param {{perfil, tareas, dia: {fecha, retrasos, marcas, eventos}}} estado
+ * @param {{perfil, tareas, dia: {fecha, retrasos, marcas, hechosObjetivo}}} estado
  * @param {object[]} acciones
  * @param {{ahora?: number}} ctx minutos locales actuales
  */
 export function aplicar(estado, acciones, { ahora = 0 } = {}) {
   const e = structuredClone(estado);
-  e.dia.retrasos ||= []; e.dia.marcas ||= {}; e.dia.eventos ||= [];
+  e.dia.retrasos ||= []; e.dia.marcas ||= {};
   for (const a of acciones) {
     switch (a.tipo) {
       case "tarea": {
@@ -117,7 +117,7 @@ export function aplicar(estado, acciones, { ahora = 0 } = {}) {
         break;
       }
       case "evento":
-        e.dia.eventos.push({ id: nuevoId(), ...a.evento });
+        e.perfil.eventosManuales = [...(e.perfil.eventosManuales || []), { id: nuevoId(), ...a.evento }];
         break;
       case "retraso":
         e.dia.retrasos.push({ desde: ahora, minutos: a.minutos });
@@ -126,6 +126,7 @@ export function aplicar(estado, acciones, { ahora = 0 } = {}) {
         e.dia.marcas[a.refId] = { ...(e.dia.marcas[a.refId] || {}), asistir: false };
         break;
       case "hecho":
+        if ((e.perfil.objetivos || []).some(o => o.id === a.refId)) e.dia.hechosObjetivo = { ...(e.dia.hechosObjetivo || {}), [a.refId]: true };
         for (const t of e.tareas) {
           if (t.id === a.refId) t.pasos.forEach(p => (p.hecho = true));
           for (const p of t.pasos) if (p.id === a.refId) p.hecho = true;

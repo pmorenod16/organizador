@@ -93,3 +93,12 @@ test("una tarea aplazada no se planifica antes de su fecha", () => {
   assert.equal(de(planDay(caso({ tareas: [t] })), "t").length, 0);
   assert.equal(de(planDay(caso({ fecha: "2026-11-18", tareas: [t] })), "t").length, 1);
 });
+
+test("no se deja un trozo suelto de menos de 15 min al partir un paso", () => {
+  // primer hueco: 30 min útiles y paso de 40 → no se parte (quedarían 10); va entero a otro hueco
+  const fijos = [fijo("a", 600, 660, { sitioId: null }), fijo("b", 710, 780, { sitioId: null })];
+  const p = planDay(caso({ fecha: "2026-11-22", fijos, tareas: [tarea("t", "estudio", null, [40])] }));
+  assert.ok(de(p, "t").every(b => b.fin - b.inicio >= 15));
+  assert.equal(de(p, "t").length, 1);
+  assert.equal(minutosDe(p, "t"), 40);
+});

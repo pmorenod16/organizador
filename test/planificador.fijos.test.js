@@ -74,3 +74,23 @@ test("comida y cena a su hora; si chocan con algo fijo, justo después", () => {
   assert.deepEqual(c, [["Comida", 14 * 60 + 40, 15 * 60 + 25], ["Cena", 21 * 60, 21 * 60 + 45]]);
   assert.equal(solapan(p.bloques), false);
 });
+
+test("tras el último sitio fuera de casa se vuelve a casa enseguida, aunque luego haya comidas", () => {
+  const perfil = { ...perfilBase(), comidas: [{ titulo: "Cena", hora: 21 * 60, minutos: 45 }], trabajo: [{ diaSemana: 0, inicio: 960, fin: 1140 }] };
+  const p = planDay(caso({ perfil }));
+  const vuelta = p.bloques.find(b => b.tipo === "trayecto" && b.sitioId === "casa");
+  assert.deepEqual([vuelta.inicio, vuelta.fin], [1150, 1165]);
+  assert.equal(p.bloques.find(b => b.titulo === "Cena").sitioId, "casa");
+});
+test("entre dos clases en el mismo campus te quedas allí", () => {
+  const p = planDay(caso({ fijos: [fijo("a", 540, 660), fijo("b", 900, 1020)] }));
+  assert.equal(p.bloques.filter(b => b.tipo === "trayecto").length, 2);
+});
+
+test("la comida no se solapa con el camino de vuelta: empieza al llegar", () => {
+  const perfil = { ...perfilBase(), comidas: [{ titulo: "Comida", hora: 14 * 60, minutos: 45 }] };
+  const p = planDay(caso({ perfil, fijos: [fijo("c", 720, 835)] }));
+  assert.equal(solapan(p.bloques), false);
+  const c = p.bloques.find(b => b.titulo === "Comida");
+  assert.deepEqual([c.inicio, c.fin, c.sitioId], [860, 905, "casa"]);
+});

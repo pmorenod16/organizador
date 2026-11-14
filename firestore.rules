@@ -1,0 +1,9 @@
+rules_version = '2';
+// Solo el dueño puede leer y escribir sus datos. Cambia OWNER_UID por tu identificador (GUIA.md).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /usuarios/{uid}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == uid && uid == "OWNER_UID";
+    }
+  }
+}

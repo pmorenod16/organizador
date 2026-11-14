@@ -1,0 +1,86 @@
+:root {
+  --fondo: #F4F5F8; --tarjeta: #fff; --texto: #1C2030; --suave: #6B7185; --linea: #E3E6EE;
+  --azul: #3B5BDB; --azul-claro: #E7ECFF; --amarillo: #FFF4D6; --amarillo-borde: #F2C94C;
+  --verde: #2F9E44; --rojo: #C92A2A;
+  --estudio: #3B5BDB; --fijo: #495057; --trabajo: #7048E8; --deporte: #2F9E44; --trayecto: #ADB5BD; --descanso: #12B886; --comida: #F08C00;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--texto); background: var(--fondo);
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { margin: 0; min-height: 100dvh; }
+h1 { font-size: 1.5rem; margin: .3em 0; }
+h2 { font-size: 1.1rem; margin: 1.2em 0 .5em; }
+button { font: inherit; cursor: pointer; }
+input, select, textarea { font: inherit; padding: .55em .7em; border: 1px solid var(--linea); border-radius: 10px; background: #fff; width: 100%; }
+.suave { color: var(--suave); }
+.error { color: var(--rojo); min-height: 1.2em; }
+.pantalla { padding: 24px 18px; max-width: 640px; margin: 0 auto; }
+.centro { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 100dvh; gap: 8px; }
+.btn { border: 1px solid var(--linea); background: #fff; border-radius: 12px; padding: .7em 1.1em; }
+.btn.primario { background: var(--azul); border-color: var(--azul); color: #fff; font-weight: 600; }
+.btn.peque { padding: .35em .8em; font-size: .9rem; }
+.icono { border: 0; background: none; font-size: 1.3rem; padding: 8px; }
+.uid code { background: #fff; padding: 6px 8px; border-radius: 8px; word-break: break-all; }
+
+.cabecera { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px; padding: 10px 12px calc(10px); padding-top: max(10px, env(safe-area-inset-top)); background: var(--fondo); }
+.pestanas { flex: 1; display: flex; background: #E9EBF1; border-radius: 12px; padding: 3px; }
+.pestanas button { flex: 1; border: 0; background: none; padding: .5em; border-radius: 10px; color: var(--suave); font-weight: 600; }
+.pestanas button[aria-selected="true"] { background: #fff; color: var(--texto); box-shadow: 0 1px 3px #0001; }
+#vista { padding: 4px 14px 110px; max-width: 640px; margin: 0 auto; }
+
+.ahora { background: var(--azul); color: #fff; border-radius: 18px; padding: 16px 18px; margin: 6px 0 14px; }
+.ahora .etiqueta { font-size: .8rem; opacity: .85; text-transform: uppercase; letter-spacing: .04em; }
+.ahora .titulo { font-size: 1.25rem; font-weight: 700; margin: 4px 0; }
+.ahora .paso { background: #fff2; border-radius: 10px; padding: 8px 10px; margin-top: 8px; }
+.levantarse { display: flex; align-items: center; justify-content: space-between; gap: 10px; background: var(--tarjeta); border-radius: 16px; padding: 14px 16px; margin: 6px 0 14px; }
+.levantarse b { font-size: 1.6rem; }
+
+.aviso { background: var(--amarillo); border: 1px solid var(--amarillo-borde); border-radius: 12px; padding: 10px 12px; margin: 8px 0; font-size: .95rem; }
+.propuesta { background: var(--azul-claro); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
+.propuesta .botones { display: flex; gap: 8px; margin-top: 8px; }
+
+.linea { list-style: none; margin: 0; padding: 0; }
+.bloque { display: grid; grid-template-columns: 52px 1fr auto; gap: 10px; padding: 10px 12px; margin: 6px 0; background: var(--tarjeta); border-radius: 14px; border-left: 5px solid var(--fijo); }
+.bloque .hora { font-variant-numeric: tabular-nums; font-weight: 600; font-size: .95rem; }
+.bloque .hora small { display: block; color: var(--suave); font-weight: 400; }
+.bloque .titulo { font-weight: 600; }
+.bloque .detalle { color: var(--suave); font-size: .88rem; }
+.bloque.actual { outline: 2px solid var(--azul); }
+.bloque.pasado { opacity: .55; }
+.bloque.t-estudio { border-color: var(--estudio); }
+.bloque.t-trabajo { border-color: var(--trabajo); }
+.bloque.t-gym, .bloque.t-flexible, .bloque.t-entreno, .bloque.t-partido { border-color: var(--deporte); }
+.bloque.t-descanso { border-color: var(--descanso); }
+.bloque.t-comida { border-color: var(--comida); }
+.bloque.t-trayecto, .bloque.t-rutina { border-color: var(--trayecto); background: transparent; padding: 4px 12px; }
+.bloque.t-trayecto .titulo, .bloque.t-rutina .titulo { font-weight: 400; color: var(--suave); }
+.pasos { list-style: none; padding: 0; margin: 6px 0 0; }
+.pasos label { display: flex; gap: 8px; align-items: flex-start; padding: 3px 0; font-size: .95rem; }
+.pasos input { width: auto; margin-top: .2em; }
+.pasos .hecho { text-decoration: line-through; color: var(--suave); }
+.menu { border: 0; background: none; font-size: 1.2rem; color: var(--suave); padding: 0 4px; align-self: start; }
+.sinColocar { color: var(--suave); font-size: .92rem; }
+
+.entrada { position: fixed; left: 0; right: 0; bottom: 0; display: flex; gap: 6px; align-items: center; padding: 10px 10px max(10px, env(safe-area-inset-bottom)); background: var(--tarjeta); border-top: 1px solid var(--linea); }
+.entrada input { border-radius: 22px; }
+.entrada.ocupada { opacity: .6; pointer-events: none; }
+
+.modal { position: fixed; inset: 0; background: #0006; display: flex; align-items: flex-end; justify-content: center; z-index: 20; }
+.modal .tarjeta { background: #fff; width: 100%; max-width: 640px; border-radius: 20px 20px 0 0; padding: 18px 18px max(18px, env(safe-area-inset-bottom)); max-height: 85dvh; overflow: auto; }
+.modal ul { padding-left: 1.2em; }
+.modal .botones { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
+.toast { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); background: #1C2030; color: #fff; padding: 10px 16px; border-radius: 12px; z-index: 30; max-width: 90vw; }
+
+/* configuración */
+.paso-config { background: var(--tarjeta); border-radius: 16px; padding: 16px; margin: 12px 0; }
+.campo { margin: 10px 0; }
+.campo > span { display: block; font-size: .9rem; color: var(--suave); margin-bottom: 4px; }
+.fila { display: flex; gap: 8px; align-items: center; }
+.fila > * { flex: 1; }
+.fila .estrecho { flex: 0 0 90px; }
+.ayuda { font-size: .88rem; color: var(--suave); background: var(--fondo); border-radius: 10px; padding: 8px 10px; }
+.ayuda ol { margin: 4px 0; padding-left: 1.2em; }
+.navegacion { display: flex; justify-content: space-between; gap: 8px; margin-top: 14px; }
+.progreso { color: var(--suave); font-size: .9rem; }
+.ok { color: var(--verde); }

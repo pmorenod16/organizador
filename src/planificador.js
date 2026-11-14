@@ -8,6 +8,7 @@ import { diaSemana } from "./tiempo.js";
 
 const MAX_BLOQUE = 90;
 const MIN_TROZO = 30;
+const MIN_RESTO = 15;
 const TARDE = 14 * 60;
 const ORDEN_TIPO = { entrega: 0, examen: 1, estudio: 2, otro: 2 };
 
@@ -82,7 +83,10 @@ function parteFija(entrada, extraNoche) {
   }
 
   let sitio = casa;
-  for (const f of fijos) {
+  for (const original of fijos) {
+    let f = original;
+    // comidas e imprevistos empiezan cuando se pueda (p. ej. al llegar a casa)
+    if ((f.tipo === "comida" || f.tipo === "retraso") && f.inicio < cursor) f = { ...f, inicio: cursor, fin: cursor + f.fin - f.inicio };
     const destino = f.sitioId ?? sitio;
     const t = trayecto(perfil, sitio, destino);
     if (!conocido(perfil, sitio, destino)) {
@@ -95,9 +99,20 @@ function parteFija(entrada, extraNoche) {
       bloques.push({ inicio: salida, fin: salida + t, tipo: "trayecto", titulo: `Ir a ${nombreSitio(perfil, destino)}`, refId: null, sitioId: destino });
       if (salida + t > listo) avisos.push({ tipo: "llegas-tarde", texto: `No llegas con margen a ${f.titulo}.` });
     }
-    bloques.push({ inicio: f.inicio, fin: f.fin, tipo: f.tipo, titulo: f.titulo, refId: f.id, sitioId: f.sitioId });
+    bloques.push({ inicio: f.inicio, fin: f.fin, tipo: f.tipo, titulo: f.titulo, refId: f.id, sitioId: f.sitioId ?? destino });
     cursor = Math.max(cursor, salida + t, f.fin);
     sitio = destino;
+    // si lo siguiente con sitio es en casa (o no hay nada más), se vuelve a casa ya
+    if (sitio !== casa && f.sitioId) {
+      const siguiente = fijos.slice(fijos.indexOf(original) + 1).find(n => n.sitioId);
+      if (!siguiente || siguiente.sitioId === casa) {
+        const tv = trayecto(perfil, sitio, casa);
+        const ini = cursor + margen;
+        bloques.push({ inicio: ini, fin: ini + tv, tipo: "trayecto", titulo: `Volver a ${nombreSitio(perfil, casa)}`, refId: null, sitioId: casa });
+        cursor = ini + tv;
+        sitio = casa;
+      }
+    }
   }
 
   if (sitio !== casa) {
@@ -128,7 +143,8 @@ function colocarTareas(tareas, huecos, bloques, margen) {
           const p = pendientes[0];
           if (usado + p.min <= libre) { usado += p.min; ids.push(p.id); pendientes.shift(); continue; }
           // paso que no cabe entero: se parte si el bloque está vacío (o es más largo que un bloque)
-          if (usado === 0 && (libre >= MIN_TROZO || p.min > MAX_BLOQUE) && libre >= Math.min(MIN_TROZO, p.min)) {
+          // (sin dejar un resto de menos de 15 min)
+          if (usado === 0 && (libre >= MIN_TROZO || p.min > MAX_BLOQUE) && libre >= Math.min(MIN_TROZO, p.min) && p.min - libre >= MIN_RESTO) {
             usado = libre; ids.push(p.id); p.min -= libre;
           }
           break;
