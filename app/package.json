@@ -1,0 +1,18 @@
+{
+  "name": "organizador-android",
+  "private": true,
+  "version": "1.0.0",
+  "description": "App Android del Organizador (abre la web y añade avisos, alarma y voz)",
+  "dependencies": {
+    "@capacitor/android": "6.2.0",
+    "@capacitor/cli": "6.2.0",
+    "@capacitor/core": "6.2.0",
+    "@capacitor/local-notifications": "6.1.3",
+    "@capacitor-community/speech-recognition": "6.0.1",
+    "@capacitor-firebase/authentication": "6.3.0",
+    "firebase": "10.12.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "3.0.5"
+  }
+}

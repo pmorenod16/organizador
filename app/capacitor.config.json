@@ -1,0 +1,15 @@
+{
+  "appId": "io.github.pmorenod16.organizador",
+  "appName": "Organizador",
+  "webDir": "www",
+  "server": {
+    "url": "https://pmorenod16.github.io/organizador/",
+    "androidScheme": "https",
+    "allowNavigation": ["pmorenod16.github.io", "*.firebaseapp.com", "*.googleapis.com", "accounts.google.com", "*.workers.dev"]
+  },
+  "android": { "backgroundColor": "#F4F5F8" },
+  "plugins": {
+    "FirebaseAuthentication": { "skipNativeAuth": true, "providers": ["google.com"] },
+    "LocalNotifications": { "iconColor": "#3B5BDB" }
+  }
+}

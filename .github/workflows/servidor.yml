@@ -1,0 +1,38 @@
+name: Servidor (Worker y reglas)
+
+# Publica el Worker de Cloudflare (calendarios + IA) y las reglas de Firestore.
+on:
+  workflow_dispatch: {}
+  push:
+    branches: [main]
+    paths: ["worker/**", "firestore.rules", "config.js", "scripts/reglas.mjs", ".github/workflows/servidor.yml"]
+
+jobs:
+  publicar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Tests del Worker
+        working-directory: worker
+        run: npm install --no-audit --no-fund && npx vitest run
+
+      - name: Publicar el Worker
+        working-directory: worker
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          UID=$(grep -oP 'OWNER_UID = "\K[^"]*' ../config.js)
+          PID=$(node -e 'console.log(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT).project_id)')
+          npx wrangler deploy --var OWNER_UID:"$UID" --var FIREBASE_PROJECT_ID:"$PID"
+          echo "$GEMINI_API_KEY" | npx wrangler secret put GEMINI_API_KEY
+
+      - name: Publicar las reglas de Firestore
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: (cd scripts && npm install --no-audit --no-fund) && node scripts/reglas.mjs
