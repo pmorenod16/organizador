@@ -8,7 +8,7 @@ export const firebaseConfig = {
 };
 
 // Dirección del Worker de Cloudflare (GUIA.md, paso 3).
-export const WORKER_URL = "";
+export const WORKER_URL = "https://organizador.pmorenod16.workers.dev";
 
 // Tu identificador de usuario de Firebase (la app te lo enseña la primera vez que entras).
 export const OWNER_UID = "muiVgEMaG1UfYOjXx3lSNF4kZ3U2";
