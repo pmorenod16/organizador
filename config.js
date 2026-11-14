@@ -11,4 +11,4 @@ export const firebaseConfig = {
 export const WORKER_URL = "";
 
 // Tu identificador de usuario de Firebase (la app te lo enseña la primera vez que entras).
-export const OWNER_UID = "";
+export const OWNER_UID = "muiVgEMaG1UfYOjXx3lSNF4kZ3U2";
