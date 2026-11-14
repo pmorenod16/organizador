@@ -13,6 +13,11 @@ export function eventosManualesDelDia(perfil, fecha) {
     }));
 }
 
+/** Entregas apuntadas a mano (con su fecha y hora), en el formato de /eventos. */
+export const entregasManuales = perfil => (perfil.eventosManuales || [])
+  .filter(e => e.tipo === "entrega" && !e.repetir)
+  .flatMap(e => eventosManualesDelDia(perfil, e.fecha).filter(x => x.uid === `manual:${e.id}`));
+
 /** Entregas generadas del calendario + tareas guardadas (la guardada gana si tienen el mismo id). */
 export function combinarTareas(generadas, guardadas) {
   const ids = new Set(guardadas.map(t => t.id));
@@ -42,7 +47,7 @@ export function montarDia({ fecha, eventos, perfil, tareas, dias }) {
   return {
     fecha,
     fijos: clasificar(todos, fecha, perfil, marcas),
-    tareas: combinarTareas(entregas(eventos, perfil), tareas),
+    tareas: combinarTareas(entregas([...eventos, ...entregasManuales(perfil)], perfil), tareas),
     perfil,
     semana: { hechosObjetivo: contarSemana(dias, fecha, false) },
     overrides: { retrasos: dia.retrasos || [], ...(dia.horaLevantarse != null ? { horaLevantarse: dia.horaLevantarse } : {}) },

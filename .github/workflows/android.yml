@@ -65,7 +65,7 @@ jobs:
           cp android-extra/AlarmaPlugin.java android-extra/MainActivity.java "$DEST/"
           # permisos: alarma, avisos a su hora exacta, micrófono y reconocimiento de voz
           M=android/app/src/main/AndroidManifest.xml
-          sed -i 's#<application#<uses-permission android:name="com.android.alarm.permission.SET_ALARM" />\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <queries><intent><action android:name="android.speech.RecognitionService" /></intent></queries>\n    <application#' $M
+          sed -i 's#<application#<uses-permission android:name="com.android.alarm.permission.SET_ALARM" />\n    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n    <queries><intent><action android:name="android.speech.RecognitionService" /></intent></queries>\n    <application#' $M
           grep -q SET_ALARM $M
           # la app abre la web con ?apk=N para saber qué versión del APK está instalada
           sed -i 's#"url": "https://pmorenod16.github.io/organizador/"#"url": "https://pmorenod16.github.io/organizador/?apk=${{ github.run_number }}"#' capacitor.config.json

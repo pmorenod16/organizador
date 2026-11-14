@@ -67,7 +67,7 @@ export function pintarConfiguracion(cont, perfilActual, on) {
     <h2>Asignaturas</h2>
     <p class="suave">Una por línea, tal como salen en el calendario. Sirve para saber en qué campus es cada clase.</p>
     <textarea id="asignaturas" rows="5" placeholder="Teoria de Circuits&#10;Imatge Mèdica">${esc(p.asignaturas.map(a => a.nombre).join("\n"))}</textarea>
-    <div class="campo"><span>Campus por defecto de las clases</span><select id="campus">${p.sitios.filter(s => s.id !== p.casaId).map(s => `<option value="${esc(s.id)}" ${s.id === (p.asignaturas[0]?.sitioId || "udg") ? "selected" : ""}>${esc(s.nombre)}</option>`).join("")}</select></div>`;
+    <div class="campo"><span>Campus por defecto de las clases</span><select id="campus">${p.sitios.filter(s => s.id !== p.casaId).map(s => `<option value="${esc(s.id)}" ${s.id === (p.campusDefecto || "udg") ? "selected" : ""}>${esc(s.nombre)}</option>`).join("")}</select></div>`;
   const filaSitio = s => `<div class="fila campo" data-sitio="${esc(s.id)}"><input class="nombre" value="${esc(s.nombre)}"><input class="estrecho min" type="number" min="0" max="180" value="${p.trayectos[`${p.casaId}|${s.id}`] ?? ""}" placeholder="min"></div>`;
   pasoSitios.enlazar = () => { $("#masSitio").onclick = () => $("#sitios").insertAdjacentHTML("beforeend", filaSitio({ id: "", nombre: "" })); };
   pasoSitios.leer = () => {
@@ -84,6 +84,7 @@ export function pintarConfiguracion(cont, perfilActual, on) {
     }
     p.sitios = sitios; p.trayectos = trayectos;
     const campus = $("#campus").value;
+    p.campusDefecto = campus;
     p.asignaturas = $("#asignaturas").value.split("\n").map(s => s.trim()).filter(Boolean).map(nombre => ({ nombre, sitioId: campus }));
   };
 

@@ -64,3 +64,21 @@ test("hecho de un objetivo (gym) → dia.hechosObjetivo", () => {
   const s = estado(); s.perfil.objetivos = [{ id: "gym" }]; s.refs.push("gym");
   assert.equal(aplicar(s, [{ tipo: "hecho", refId: "gym" }], {}).dia.hechosObjetivo.gym, true);
 });
+test("I11: trabajo-dia libre y con otro horario solo ese día", () => {
+  let r = validar({ acciones: [{ tipo: "trabajo-dia", fecha: "2026-11-18" }] });
+  assert.equal(r.ok, true);
+  assert.equal(aplicar(estado(), r.acciones, {}).perfil.trabajoExcepciones["2026-11-18"], null);
+  r = validar({ acciones: [{ tipo: "trabajo-dia", fecha: "2026-11-18", inicio: "17:00", fin: "20:00" }] });
+  const e = aplicar(estado(), r.acciones, {});
+  assert.deepEqual(e.perfil.trabajoExcepciones["2026-11-18"], { inicio: 1020, fin: 1200 });
+  assert.deepEqual(e.perfil.trabajo, estado().perfil.trabajo);
+  assert.match(describir(r.acciones[0]), /miércoles 18.*17:00.*20:00/);
+  assert.match(describir(validar({ acciones: [{ tipo: "trabajo-dia", fecha: "2026-11-18" }] }).acciones[0]), /No trabajas el miércoles 18/);
+});
+test("I4: las fechas de la tarjeta llevan el día de la semana", () => {
+  assert.match(describir({ tipo: "aplazar", refId: "t1", fecha: "2026-11-20" }), /viernes 20/);
+});
+test("M11: horas imposibles se rechazan", () => {
+  assert.equal(validar({ acciones: [{ tipo: "trabajo-horario", diaSemana: 0, inicio: "25:00", fin: "26:00" }] }).ok, false);
+  assert.equal(validar({ acciones: [{ tipo: "evento", titulo: "x", fecha: "2026-11-18", inicio: "10:00", fin: "11:00", diasSemana: [9] }] }).ok, false);
+});

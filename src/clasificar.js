@@ -1,6 +1,6 @@
 // Convierte los eventos de los calendarios en bloques fijos del día (EventoFijo)
 // y saca las entregas como tareas.
-import { aMinutos, fechaLocal } from "./tiempo.js";
+import { aMinutos, fechaLocal, sumarDias } from "./tiempo.js";
 
 export const normal = s => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
 
@@ -13,22 +13,29 @@ const REGLAS = [
 const OBLIGATORIOS = new Set(["practica", "examen"]);
 const ENTREGA = /\b(entrega|lliurament|venciment|vence|due|tancament|termini)\b/;
 
-function tipoDe(titulo) {
-  const t = normal(titulo);
+// Lo que no se reconoce por el título es «clase» si coincide con una asignatura o se repite
+// cada semana (así son los horarios de clase); si no, «otro» (una cena, una cita…).
+function tipoDe(e, perfil) {
+  const t = normal(e.titulo);
   for (const [tipo, re] of REGLAS) if (re.test(t)) return tipo;
-  return "clase";
+  if (e.recurrente || (perfil.asignaturas || []).some(a => a.nombre && t.includes(normal(a.nombre)))) return "clase";
+  return "otro";
 }
 
-function sitioDe(e, perfil) {
+const UNIVERSIDAD = new Set(["clase", "practica", "examen"]);
+
+function sitioDe(e, perfil, tipo) {
   const ub = normal(e.ubicacion);
   if (ub) for (const s of perfil.sitios || []) if (s.id !== perfil.casaId && ub.includes(normal(s.nombre))) return s.id;
   const t = normal(e.titulo);
   for (const a of perfil.asignaturas || []) if (a.nombre && t.includes(normal(a.nombre))) return a.sitioId || null;
+  // clases, prácticas y exámenes de los calendarios: en el campus por defecto
+  if (e.origen !== "manual" && UNIVERSIDAD.has(tipo)) return perfil.campusDefecto ?? perfil.asignaturas?.[0]?.sitioId ?? null;
   return null;
 }
 
 const esMoodle = (e, perfil) => !!perfil.calendarios?.moodle && e.origen === perfil.calendarios.moodle;
-const esEntrega = (e, perfil) => esMoodle(e, perfil) || ENTREGA.test(normal(e.titulo));
+const esEntrega = (e, perfil) => (e.tipoManual ? e.tipoManual === "entrega" : esMoodle(e, perfil) || ENTREGA.test(normal(e.titulo)));
 
 /**
  * @param {Array} eventos de /eventos
@@ -42,18 +49,21 @@ export function clasificar(eventos, fecha, perfil, marcas = {}) {
   const salida = [];
   for (const e of eventos) {
     if (e.todoElDia || esEntrega(e, perfil)) continue;
-    const inicio = aMinutos(e.inicio, fecha), fin = aMinutos(e.fin, fecha);
+    let inicio = aMinutos(e.inicio, fecha);
+    const fin = aMinutos(e.fin, fecha);
     if (fin <= 0 || inicio >= 1440) continue;
+    // lo que empezó el día anterior: si acaba de madrugada no cuenta; si no, desde las 00:00
+    if (inicio < 0) { if (fin <= 6 * 60) continue; inicio = 0; }
     const clave = `${normal(e.titulo)}|${e.inicio}`;
     if (vistos.has(clave)) continue;
     vistos.add(clave);
     const id = `${e.uid}@${e.inicio}`;
     const m = { ...(marcas[e.uid] || {}), ...(marcas[id] || {}) };
-    const tipo = m.tipo || tipoDe(e.titulo);
+    const tipo = m.tipo || tipoDe(e, perfil);
     salida.push({
       id, uid: e.uid, titulo: e.titulo, inicio, fin, tipo,
       obligatorio: m.obligatorio ?? OBLIGATORIOS.has(tipo),
-      sitioId: sitioDe(e, perfil),
+      sitioId: sitioDe(e, perfil, tipo),
       asistir: m.asistir ?? true,
     });
   }
@@ -69,9 +79,11 @@ export function entregas(eventos, perfil) {
     const id = `ical:${e.uid}`;
     if (vistos.has(id)) continue;
     vistos.add(id);
-    const fechaLimite = e.todoElDia ? e.inicio : fechaLocal(new Date(e.inicio));
+    let fechaLimite = e.todoElDia ? e.inicio : fechaLocal(new Date(e.inicio));
+    let horaLimite = e.todoElDia ? null : aMinutos(e.inicio, fechaLimite);
+    if (horaLimite === 0) { fechaLimite = sumarDias(fechaLimite, -1); horaLimite = 1440; }  // a las 00:00 = el día anterior
     salida.push({
-      id, titulo: e.titulo, tipo: "entrega", fechaLimite, sitioId: null,
+      id, titulo: e.titulo, tipo: "entrega", fechaLimite, horaLimite, sitioId: null,
       pasos: [{ id: `${id}#1`, titulo: `Preparar: ${e.titulo}`, minutos: 60, hecho: false }],
     });
   }

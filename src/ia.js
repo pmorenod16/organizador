@@ -1,5 +1,6 @@
 // Llamadas al Worker (calendarios e IA). El token de Firebase demuestra que eres tú.
 import { WORKER_URL } from "../config.js";
+import { expandir } from "./ical.js";
 
 let obtenerToken = async () => "";
 export const usarToken = fn => { obtenerToken = fn; };
@@ -20,8 +21,18 @@ async function post(ruta, body) {
   return datos;
 }
 
-/** @returns {Promise<{eventos: object[], fallidos: string[]}>} */
-export const eventos = (urls, desde, hasta) => post("/eventos", { urls, desde, hasta });
+/** Descarga los calendarios (vía Worker) y los expande aquí. @returns {Promise<{eventos: object[], fallidos: string[]}>} */
+export async function eventos(urls, desde, hasta) {
+  const r = await post("/calendarios", { urls });
+  const fallidos = [...(r.fallidos || [])];
+  const todos = [];
+  for (const c of r.calendarios || []) {
+    try { todos.push(...expandir(c.texto, new Date(desde + "T00:00:00"), new Date(hasta + "T23:59:59"), c.url)); }
+    catch { fallidos.push(c.url); }
+  }
+  todos.sort((a, b) => (a.inicio < b.inicio ? -1 : 1));
+  return { eventos: todos, fallidos };
+}
 
 /** @returns {Promise<object>} JSON crudo de la IA ({acciones}); validar con acciones.validar */
-export const entrada = (texto, { fecha, ahora, contexto }) => post("/ia/entrada", { texto, fecha, ahora, contexto });
+export const entrada = (texto, { fecha, fechaVista, ahora, contexto }) => post("/ia/entrada", { texto, fecha, fechaVista, ahora, contexto });

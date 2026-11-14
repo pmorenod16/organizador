@@ -2,18 +2,21 @@
 // Nada se aplica sin confirmar: validar() → describir() en la tarjeta → aplicar() al pulsar «Aplicar».
 import { hhmm } from "./tiempo.js";
 
-const TIPOS = new Set(["tarea", "evento", "retraso", "no-ir", "hecho", "aplazar", "trabajo-horario"]);
+const TIPOS = new Set(["tarea", "evento", "retraso", "no-ir", "hecho", "aplazar", "trabajo-horario", "trabajo-dia"]);
 const TIPOS_TAREA = new Set(["entrega", "examen", "estudio", "otro"]);
 const TIPOS_EVENTO = new Set(["entreno", "partido", "entrega", "examen", "clase", "practica", "otro"]);
 const DIAS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
 const FECHA = /^\d{4}-\d{2}-\d{2}$/;
 
 const aMin = v => {
-  if (typeof v === "number") return v;
+  if (typeof v === "number" && v >= 0 && v <= 1440) return v;
   const m = /^(\d{1,2}):(\d{2})$/.exec(v || "");
-  if (!m) throw new Error(`hora no válida: ${v}`);
+  if (!m || +m[1] > 23 || +m[2] > 59) throw new Error(`hora no válida: ${v}`);
   return +m[1] * 60 + +m[2];
 };
+const DIAS_SEMANA = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+/** "2026-11-20" → "viernes 20" */
+export const diaFecha = f => { const d = new Date(f + "T12:00:00Z"); return `${DIAS_SEMANA[d.getUTCDay()]} ${d.getUTCDate()}`; };
 const fecha = v => (v && FECHA.test(v) ? v : null);
 const exigirRef = (ref, refs) => {
   if (!ref) throw new Error("falta refId");
@@ -36,7 +39,10 @@ function normalizar(a, refs) {
       if (!titulo || !fecha(a.fecha)) throw new Error("evento sin título o fecha");
       const ev = { titulo, tipo: TIPOS_EVENTO.has(a.tipoEvento) ? a.tipoEvento : "otro", fecha: a.fecha, inicio: aMin(a.inicio), fin: aMin(a.fin) };
       if (ev.fin <= ev.inicio) throw new Error("el evento acaba antes de empezar");
-      if (Array.isArray(a.diasSemana) && a.diasSemana.length) ev.repetir = { diasSemana: a.diasSemana.filter(d => d >= 0 && d <= 6) };
+      if (Array.isArray(a.diasSemana) && a.diasSemana.length) {
+        if (a.diasSemana.some(d => !(d >= 0 && d <= 6))) throw new Error("día de la semana no válido");
+        ev.repetir = { diasSemana: [...new Set(a.diasSemana)] };
+      }
       return { tipo: "evento", evento: ev };
     }
     case "retraso": {
@@ -50,6 +56,13 @@ function normalizar(a, refs) {
     case "aplazar":
       if (!fecha(a.fecha)) throw new Error("aplazar sin fecha");
       return { tipo: "aplazar", refId: exigirRef(a.refId, refs), fecha: a.fecha };
+    case "trabajo-dia": {
+      if (!fecha(a.fecha)) throw new Error("falta la fecha");
+      if (!a.inicio && !a.fin) return { tipo: "trabajo-dia", fecha: a.fecha, libre: true };
+      const inicio = aMin(a.inicio), fin = aMin(a.fin);
+      if (fin <= inicio) throw new Error("horario no válido");
+      return { tipo: "trabajo-dia", fecha: a.fecha, libre: false, inicio, fin };
+    }
     case "trabajo-horario": {
       const d = +a.diaSemana;
       if (!(d >= 0 && d <= 6)) throw new Error("día no válido");
@@ -82,17 +95,18 @@ export function describir(a, nombres = {}) {
     case "tarea": {
       const t = a.tarea;
       const total = t.pasos.reduce((s, p) => s + p.minutos, 0);
-      return `Nueva tarea: ${t.titulo}${t.fechaLimite ? ` (para el ${t.fechaLimite})` : ""} · ${t.pasos.length} pasos, ${total} min`;
+      return `Nueva tarea: ${t.titulo}${t.fechaLimite ? ` (para el ${diaFecha(t.fechaLimite)})` : ""} · ${t.pasos.length} pasos, ${total} min`;
     }
     case "evento": {
       const e = a.evento;
-      const rep = e.repetir ? ` cada ${e.repetir.diasSemana.map(d => DIAS[d]).join(" y ")}` : ` el ${e.fecha}`;
+      const rep = e.repetir ? ` cada ${e.repetir.diasSemana.map(d => DIAS[d]).join(" y ")}` : ` el ${diaFecha(e.fecha)}`;
       return `Apuntar ${e.titulo}${rep} de ${hhmm(e.inicio)} a ${hhmm(e.fin)}`;
     }
     case "retraso": return `Retrasar el resto del día ${a.minutos} min`;
     case "no-ir": return `No ir a ${n(a.refId)}`;
     case "hecho": return `Marcar como hecho: ${n(a.refId)}`;
-    case "aplazar": return `Aplazar ${n(a.refId)} al ${a.fecha}`;
+    case "aplazar": return `Aplazar ${n(a.refId)} al ${diaFecha(a.fecha)}`;
+    case "trabajo-dia": return a.libre ? `No trabajas el ${diaFecha(a.fecha)}` : `El ${diaFecha(a.fecha)} trabajas de ${hhmm(a.inicio)} a ${hhmm(a.fin)} (solo ese día)`;
     case "trabajo-horario": return `Cambiar el horario de trabajo del ${DIAS[a.diaSemana]}: de ${hhmm(a.inicio)} a ${hhmm(a.fin)}`;
   }
   return a.tipo;
@@ -134,6 +148,9 @@ export function aplicar(estado, acciones, { ahora = 0 } = {}) {
         break;
       case "aplazar":
         for (const t of e.tareas) if (t.id === a.refId) t.aplazadaHasta = a.fecha;
+        break;
+      case "trabajo-dia":
+        e.perfil.trabajoExcepciones = { ...(e.perfil.trabajoExcepciones || {}), [a.fecha]: a.libre ? null : { inicio: a.inicio, fin: a.fin } };
         break;
       case "trabajo-horario":
         e.perfil.trabajo = [...(e.perfil.trabajo || []).filter(t => t.diaSemana !== a.diaSemana), { diaSemana: a.diaSemana, inicio: a.inicio, fin: a.fin }]

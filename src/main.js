@@ -118,12 +118,18 @@ A.onAuthStateChanged(auth, async user => {
   mostrar("carga");
   store.iniciarStore(F, db, user.uid);
   ia.usarToken(() => user.getIdToken());
-  const lunes = sumarDias(hoy(), -diaSemana(hoy()));
-  const [perfil, tareas, dias] = await Promise.all([store.cargarPerfil(), store.cargarTareas(), store.cargarDias(lunes, sumarDias(hoy(), 1))]);
-  Object.assign(S, { perfil: perfil && completarPerfil(perfil), tareas, dias });
+  await recargarDatos();
   mostrar("app");
   if (!S.perfil) abrirConfiguracion(); else { await cargarEventos(); pintar(); }
 });
+
+// Se recarga al entrar y cada vez que vuelves a la app: así el móvil y el ordenador no se pisan
+// los cambios y, pasada la medianoche, se leen los días nuevos.
+async function recargarDatos() {
+  const lunes = sumarDias(hoy(), -diaSemana(hoy()));
+  const [perfil, tareas, dias] = await Promise.all([store.cargarPerfil(), store.cargarTareas(), store.cargarDias(lunes, sumarDias(hoy(), 1))]);
+  Object.assign(S, { perfil: perfil && completarPerfil(perfil), tareas, dias, cargadoDia: hoy() });
+}
 
 async function cargarEventos(forzar = false) {
   const urls = urlsCalendario(S.perfil);
@@ -141,9 +147,19 @@ async function cargarEventos(forzar = false) {
 }
 
 // ---------- plan ----------
+// Hoy se planifica desde ahora y sabiendo a qué hora hay que levantarse mañana (para no recortar
+// sueño por debajo del mínimo). Mañana se planifica sabiendo a qué hora acaba hoy (sueño real).
 function calcular(fecha) {
   const entrada = montarDia({ fecha, eventos: S.eventos, perfil: S.perfil, tareas: S.tareas, dias: S.dias });
-  if (fecha !== hoy()) entrada.overrides.horaDormirAnterior = S.perfil.horaDormir;
+  if (fecha === hoy()) {
+    entrada.ahora = ahora();
+    const manana = montarDia({ fecha: sumarDias(fecha, 1), eventos: S.eventos, perfil: S.perfil, tareas: [], dias: S.dias });
+    entrada.levantarseManana = planDay(manana).horaLevantarse;
+  } else {
+    const deHoy = calcular(sumarDias(fecha, -1)).plan;
+    const fin = Math.max(...deHoy.bloques.filter(b => b.tipo !== "trayecto").map(b => b.fin), 0);
+    entrada.overrides.horaDormirAnterior = Math.max(S.perfil.horaDormir, fin) % 1440;
+  }
   const plan = planDay(entrada);
   const descartadas = new Set(S.dias[fecha]?.propuestasNo || []);
   plan.propuestas = plan.propuestas.filter(p => !descartadas.has(`${p.tipo}:${p.refId}`));
@@ -155,7 +171,8 @@ function pintar() {
   const { plan, tareas } = calcular(fecha);
   S.plan = plan; S.tareasVista = tareas;
   document.querySelectorAll("[data-vista]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.vista === S.vista)));
-  pintarDia($("#vista"), { plan, esHoy: S.vista === "hoy", ahora: ahora(), tareas, perfil: S.perfil, hechosHoy: S.dias[fecha]?.hechosObjetivo, nativo: esNativo() }, {
+  const pasosHechos = (S.dias[fecha]?.pasosHechos || []).filter(id => tareas.some(t => t.pasos.some(p => p.id === id && p.hecho)));
+  pintarDia($("#vista"), { plan, esHoy: S.vista === "hoy", ahora: ahora(), tareas, perfil: S.perfil, hechosHoy: S.dias[fecha]?.hechosObjetivo, pasosHechos, nativo: esNativo() }, {
     paso: (id, hecho) => cambiarPaso(fecha, id, hecho),
     objetivo: (id, hecho) => guardarDia(fecha, { hechosObjetivo: { ...(S.dias[fecha]?.hechosObjetivo || {}), [id]: hecho } }),
     propuesta: (p, acepta) => acepta ? aplicarAcciones([{ tipo: "no-ir", refId: p.refId }, ...(p.tipo === "saltar-clase" ? [recuperar(plan, p.refId)] : [])], fecha)
@@ -163,8 +180,10 @@ function pintar() {
     menuBloque: b => menuBloque(b, fecha),
     alarma: async () => { await ponerAlarma(plan.horaLevantarse); toast(`Alarma puesta a las ${hhmm(plan.horaLevantarse)}`); },
   });
-  if (S.vista === "hoy") programarAvisos(plan);
-  else alarmaAutomatica(plan);
+  // avisos de hoy y de mañana (por si mañana no abres la app)
+  const otro = S.vista === "hoy" ? calcular(sumarDias(fecha, 1)).plan : calcular(hoy()).plan;
+  programarAvisos(S.vista === "hoy" ? [plan, otro] : [otro, plan]);
+  alarmaAutomatica(S.vista === "hoy" ? otro : plan);
 }
 
 // Al saltarse una clase queda apuntado qué recuperar para el examen.
@@ -192,8 +211,12 @@ async function cambiarPaso(fecha, pasoId, hecho) {
   if (!t) return;
   t.pasos.find(p => p.id === pasoId).hecho = hecho;
   S.tareas = [...S.tareas.filter(x => x.id !== t.id), t];
+  // lo hecho hoy se queda a la vista (y se puede desmarcar)
+  const lista = new Set(S.dias[fecha]?.pasosHechos || []);
+  hecho ? lista.add(pasoId) : lista.delete(pasoId);
+  S.dias[fecha] = { ...(S.dias[fecha] || {}), pasosHechos: [...lista] };
   pintar();
-  await store.guardarTarea(t);
+  await Promise.all([store.guardarTarea(t), store.guardarDia(fecha, S.dias[fecha])]);
 }
 
 function menuBloque(b, fecha) {
@@ -241,9 +264,10 @@ function contextoIA() {
     objetivos: S.perfil.objetivos.map(o => ({ refId: o.id, titulo: o.titulo })),
   };
 }
+// El trabajo no se puede «no ir»: solo cambia con trabajo-dia o trabajo-horario.
 const refsValidas = () => {
   const c = contextoIA();
-  return [...c.tareas.flatMap(t => [t.id, ...t.pasos.map(p => p.id)]), ...c.bloques.map(b => b.refId), ...c.objetivos.map(o => o.refId)];
+  return [...c.tareas.flatMap(t => [t.id, ...t.pasos.map(p => p.id)]), ...c.bloques.filter(b => b.tipo !== "trabajo").map(b => b.refId), ...c.objetivos.map(o => o.refId)];
 };
 
 async function enviar(texto) {
@@ -252,7 +276,7 @@ async function enviar(texto) {
   form.classList.add("ocupada");
   try {
     const fecha = fechaVista();
-    const r = await ia.entrada(texto, { fecha, ahora: fecha === hoy() ? ahora() : 0, contexto: contextoIA() });
+    const r = await ia.entrada(texto, { fecha: hoy(), fechaVista: fecha, ahora: ahora(), contexto: contextoIA() });
     const v = validar(r, refsValidas());
     if (!v.ok) { toast(`No lo he entendido bien (${v.error}). Prueba a decirlo de otra forma.`, 5000); return; }
     if (!v.acciones.length) { toast("No he visto nada que cambiar. Prueba a decirlo de otra forma."); return; }
@@ -315,6 +339,7 @@ setInterval(() => { if (S.perfil && !$("#app").hidden && $("#modal").hidden && !
 document.addEventListener("visibilitychange", async () => {
   if (document.hidden || !S.perfil || $("#entrada").hidden) return;
   comprobarVersion();
+  try { await recargarDatos(); } catch (e) { console.warn(e); }
   await cargarEventos();
   pintar();
 });

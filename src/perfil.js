@@ -26,6 +26,8 @@ export function perfilPorDefecto() {
       { id: "abuelos", titulo: "Ver a los abuelos", tipo: "flexible", vecesSemana: 1, minutos: 120, sitioId: "abuelos" },
     ],
     asignaturas: [],
+    campusDefecto: "udg",
+    trabajoExcepciones: {},
     calendarios: { google: "", examenes: "", moodle: "" },
     marcas: {},
     eventosManuales: [],

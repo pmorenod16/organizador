@@ -18,8 +18,8 @@ const llamar = async (nombre, metodo, ...args) => (await plug(nombre)).p[metodo]
 
 const AVISOS = new Set(["estudio", "gym", "flexible", "clase", "practica", "examen", "trabajo", "entreno", "partido", "trayecto", "descanso", "comida"]);
 
-/** Programa un aviso al empezar cada bloque que queda por delante (borra los anteriores). */
-export async function programarAvisos(plan) {
+/** Programa un aviso al empezar cada bloque que queda por delante, de uno o varios días (borra los anteriores). */
+export async function programarAvisos(planes) {
   if (!esNativo()) return;
   try {
     const perm = await llamar("LocalNotifications", "checkPermissions");
@@ -28,9 +28,9 @@ export async function programarAvisos(plan) {
     const pend = await llamar("LocalNotifications", "getPending");
     if (pend.notifications?.length) await llamar("LocalNotifications", "cancel", { notifications: pend.notifications.map(n => ({ id: n.id })) });
     const ahora = Date.now();
-    const notifications = plan.bloques
+    const notifications = [].concat(planes).flatMap((plan, d) => plan.bloques
       .filter(b => AVISOS.has(b.tipo))
-      .map((b, i) => ({ b, i, at: deMinutos(b.inicio, plan.fecha) }))
+      .map((b, i) => ({ b, i: d * 200 + i, at: deMinutos(b.inicio, plan.fecha) })))
       .filter(x => x.at.getTime() > ahora + 30000)
       .slice(0, 60)
       .map(({ b, i, at }) => ({

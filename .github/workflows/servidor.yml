@@ -27,9 +27,9 @@ jobs:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
         run: |
-          UID=$(grep -oP 'OWNER_UID = "\K[^"]*' ../config.js)
+          OWNER=$(grep -oP 'OWNER_UID = "\K[^"]*' ../config.js)
           PID=$(node -e 'console.log(JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT).project_id)')
-          npx wrangler deploy --var OWNER_UID:"$UID" --var FIREBASE_PROJECT_ID:"$PID"
+          npx wrangler deploy --var OWNER_UID:"$OWNER" --var FIREBASE_PROJECT_ID:"$PID"
           echo "$GEMINI_API_KEY" | npx wrangler secret put GEMINI_API_KEY
 
       - name: Publicar las reglas de Firestore

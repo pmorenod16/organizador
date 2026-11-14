@@ -23,18 +23,17 @@ const conocido = (perfil, a, b) => !a || !b || a === b || perfil.trayectos?.[`${
 const nombreSitio = (perfil, id) => perfil.sitios?.find(s => s.id === id)?.nombre || id;
 const duracion = bs => bs.reduce((s, b) => s + b.fin - b.inicio, 0);
 
-/** Fijos del día: eventos a los que se asiste + trabajo del perfil + retrasos. */
+/** Fijos del día: eventos a los que se asiste + trabajo del perfil + comidas. */
 function fijosDelDia({ fecha, fijos, perfil, overrides }) {
   const dia = diaSemana(fecha);
-  const trabajo = (perfil.trabajo || []).filter(t => t.diaSemana === dia).map((t, i) => ({
+  // excepción para una fecha concreta: null = no se trabaja; {inicio, fin} = otro horario ese día
+  const exc = perfil.trabajoExcepciones || {};
+  const turnos = fecha in exc ? (exc[fecha] ? [exc[fecha]] : []) : (perfil.trabajo || []).filter(t => t.diaSemana === dia);
+  const trabajo = turnos.map((t, i) => ({
     id: `trabajo-${fecha}-${i}`, titulo: "Trabajo", inicio: t.inicio, fin: t.fin, tipo: "trabajo",
     obligatorio: true, sitioId: t.sitioId || perfil.trabajoSitioId || null, asistir: true,
   }));
-  const retrasos = (overrides.retrasos || []).map((r, i) => ({
-    id: `retraso-${i}`, titulo: "Imprevisto", inicio: r.desde, fin: r.desde + r.minutos, tipo: "retraso",
-    obligatorio: true, sitioId: null, asistir: true,
-  }));
-  const base = [...fijos.filter(f => f.asistir !== false), ...trabajo, ...retrasos].sort((a, b) => a.inicio - b.inicio);
+  const base = [...fijos.filter(f => f.asistir !== false), ...trabajo].sort((a, b) => a.inicio - b.inicio);
   // comidas: a su hora; si chocan con algo fijo, justo después (máx. 90 min tarde)
   const margen = perfil.margen ?? 10;
   const comidas = [];
@@ -56,7 +55,7 @@ function parteFija(entrada, extraNoche) {
   const avisos = [], propuestas = [], bloques = [], huecos = [];
   const rutina = (perfil.rutinaManana || []).reduce((s, r) => s + r.minutos, 0);
 
-  const primero = fijos.find(f => f.tipo !== "retraso" && f.tipo !== "comida");
+  const primero = fijos.find(f => f.tipo !== "comida" && f.inicio >= 0);
   let levantarse = perfil.levantarseDefecto;
   if (primero) {
     const salir = primero.inicio - margen - trayecto(perfil, casa, primero.sitioId);
@@ -70,7 +69,7 @@ function parteFija(entrada, extraNoche) {
   const sueno = levantarse - acostarse;
   const minSueno = (perfil.minSleepHours ?? 4) * 60;
   if (sueno < (perfil.horasSueno ?? 8) * 60) {
-    avisos.push({ tipo: "sueno-recortado", texto: `Esta noche duermes ${Math.floor(sueno / 60)} h ${sueno % 60} min.` });
+    avisos.push({ tipo: "sueno-recortado", texto: `Para este día duermes ${Math.floor(sueno / 60)} h ${sueno % 60} min.` });
   }
   if (sueno <= minSueno && primero && primero.tipo === "clase" && !primero.obligatorio) {
     propuestas.push({ tipo: "saltar-clase", refId: primero.id, motivo: "sueno" });
@@ -85,14 +84,14 @@ function parteFija(entrada, extraNoche) {
   let sitio = casa;
   for (const original of fijos) {
     let f = original;
-    // comidas e imprevistos empiezan cuando se pueda (p. ej. al llegar a casa)
-    if ((f.tipo === "comida" || f.tipo === "retraso") && f.inicio < cursor) f = { ...f, inicio: cursor, fin: cursor + f.fin - f.inicio };
+    // las comidas empiezan cuando se pueda (p. ej. al llegar a casa)
+    if (f.tipo === "comida" && f.inicio < cursor) f = { ...f, inicio: cursor, fin: cursor + f.fin - f.inicio };
     const destino = f.sitioId ?? sitio;
     const t = trayecto(perfil, sitio, destino);
     if (!conocido(perfil, sitio, destino)) {
       avisos.push({ tipo: "trayecto-desconocido", texto: `No sé cuánto tardas de ${nombreSitio(perfil, sitio)} a ${nombreSitio(perfil, destino)}; cuento 15 min.` });
     }
-    const listo = f.tipo === "retraso" || f.tipo === "comida" ? f.inicio : f.inicio - margen;
+    const listo = f.tipo === "comida" ? f.inicio : f.inicio - margen;
     const salida = Math.max(cursor, listo - t);
     if (salida > cursor) huecos.push({ inicio: cursor, fin: salida, sitio });
     if (t > 0) {
@@ -102,12 +101,13 @@ function parteFija(entrada, extraNoche) {
     bloques.push({ inicio: f.inicio, fin: f.fin, tipo: f.tipo, titulo: f.titulo, refId: f.id, sitioId: f.sitioId ?? destino });
     cursor = Math.max(cursor, salida + t, f.fin);
     sitio = destino;
-    // si lo siguiente con sitio es en casa (o no hay nada más), se vuelve a casa ya
+    // se vuelve a casa ya si lo siguiente es en casa (o no hay nada más) y da tiempo;
+    // si lo siguiente no tiene sitio, uno se queda donde está
     if (sitio !== casa && f.sitioId) {
-      const siguiente = fijos.slice(fijos.indexOf(original) + 1).find(n => n.sitioId);
-      if (!siguiente || siguiente.sitioId === casa) {
-        const tv = trayecto(perfil, sitio, casa);
-        const ini = cursor + margen;
+      const siguiente = fijos.slice(fijos.indexOf(original) + 1).find(n => n.tipo !== "comida");
+      const tv = trayecto(perfil, sitio, casa);
+      const ini = cursor + margen;
+      if (!siguiente || (siguiente.sitioId === casa && ini + tv <= siguiente.inicio - margen)) {
         bloques.push({ inicio: ini, fin: ini + tv, tipo: "trayecto", titulo: `Volver a ${nombreSitio(perfil, casa)}`, refId: null, sitioId: casa });
         cursor = ini + tv;
         sitio = casa;
@@ -135,7 +135,7 @@ function colocarTareas(tareas, huecos, bloques, margen) {
     for (const h of huecos) {
       while (pendientes.length) {
         const ini = h.inicio + margen;
-        const libre = Math.min(MAX_BLOQUE, h.fin - ini);
+        const libre = Math.min(MAX_BLOQUE, Math.min(h.fin, t.finMax ?? Infinity) - ini);
         if (libre <= 0) break;
         const ids = [];
         let usado = 0;
@@ -144,8 +144,9 @@ function colocarTareas(tareas, huecos, bloques, margen) {
           if (usado + p.min <= libre) { usado += p.min; ids.push(p.id); pendientes.shift(); continue; }
           // paso que no cabe entero: se parte si el bloque está vacío (o es más largo que un bloque)
           // (sin dejar un resto de menos de 15 min)
-          if (usado === 0 && (libre >= MIN_TROZO || p.min > MAX_BLOQUE) && libre >= Math.min(MIN_TROZO, p.min) && p.min - libre >= MIN_RESTO) {
-            usado = libre; ids.push(p.id); p.min -= libre;
+          if (usado === 0) {
+            const trozo = Math.min(libre, p.min - MIN_RESTO);
+            if (trozo >= MIN_TROZO) { usado = trozo; ids.push(p.id); p.min -= trozo; }
           }
           break;
         }
@@ -206,10 +207,16 @@ function ordenarTareas(tareas, fecha) {
   const manana = new Date(fecha + "T12:00:00Z"); manana.setUTCDate(manana.getUTCDate() + 1);
   const limiteUrgente = manana.toISOString().slice(0, 10);
   return tareas
-    .filter(t => t.pasos?.some(p => !p.hecho) && (!t.fechaLimite || t.fechaLimite >= fecha) && !(t.aplazadaHasta > fecha) && t.tipo !== "gym" && t.tipo !== "flexible")
-    .map(t => ({ ...t, urgente: !!t.fechaLimite && t.fechaLimite <= limiteUrgente && (t.tipo === "entrega" || t.tipo === "examen") }))
-    .sort((a, b) => (ORDEN_TIPO[a.tipo] ?? 2) - (ORDEN_TIPO[b.tipo] ?? 2)
-      || (a.fechaLimite || "9999").localeCompare(b.fechaLimite || "9999"));
+    .filter(t => t.pasos?.some(p => !p.hecho) && !(t.aplazadaHasta > fecha) && t.tipo !== "gym" && t.tipo !== "flexible")
+    .map(t => ({
+      ...t,
+      vencida: !!t.fechaLimite && t.fechaLimite < fecha,
+      urgente: !!t.fechaLimite && t.fechaLimite >= fecha && t.fechaLimite <= limiteUrgente && (t.tipo === "entrega" || t.tipo === "examen"),
+      finMax: t.fechaLimite === fecha && t.horaLimite != null ? t.horaLimite : Infinity,
+    }))
+    // lo que vence antes va primero; a igual fecha, entregas → exámenes → estudio
+    .sort((a, b) => (a.fechaLimite || "9999").localeCompare(b.fechaLimite || "9999")
+      || (ORDEN_TIPO[a.tipo] ?? 2) - (ORDEN_TIPO[b.tipo] ?? 2));
 }
 
 /** Una pasada completa con unas opciones de recorte. */
@@ -217,11 +224,28 @@ function pasada(entrada, { descanso, objetivos, extraNoche }) {
   const { perfil } = entrada;
   const margen = perfil.margen ?? 10;
   const fija = parteFija(entrada, extraNoche);
-  const bloques = [...fija.bloques], huecos = fija.huecos, avisos = [...fija.avisos];
+  const bloques = [...fija.bloques], avisos = [...fija.avisos];
+  // hoy: lo que queda por colocar va a partir de ahora
+  const huecos = fija.huecos
+    .map(h => ({ ...h, inicio: entrada.ahora != null ? Math.max(h.inicio, entrada.ahora) : h.inicio }))
+    .filter(h => h.fin > h.inicio);
+  // imprevistos: ocupan el primer hueco libre desde que pasaron y empujan lo flexible
+  for (const r of entrada.overrides.retrasos || []) {
+    const h = huecos.find(x => x.fin > r.desde);
+    if (!h) continue;
+    const ini = Math.max(h.inicio, r.desde), fin = Math.min(h.fin, ini + r.minutos);
+    if (fin <= ini) continue;
+    bloques.push({ inicio: ini, fin, tipo: "retraso", titulo: "Imprevisto", refId: null, sitioId: h.sitio });
+    h.inicio = fin;
+  }
+  const tareas = ordenarTareas(entrada.tareas || [], entrada.fecha);
+  for (const t of tareas.filter(t => t.vencida && t.tipo === "entrega")) {
+    avisos.push({ tipo: "entrega-vencida", texto: `${t.titulo} venció el ${t.fechaLimite} y aún tiene pasos pendientes.` });
+  }
   const minDescanso = perfil.descansoMinDia ?? 0;
   // descanso: "reservar" (antes que las tareas), "sobrante" (lo que quede), "nada" (se está recortando sueño)
   let descansado = descanso === "reservar" ? reservarDescanso(huecos, bloques, minDescanso, true) : 0;
-  const sinColocar = colocarTareas(ordenarTareas(entrada.tareas || [], entrada.fecha), huecos, bloques, margen);
+  const sinColocar = colocarTareas(tareas, huecos, bloques, margen);
   if (descanso === "sobrante") descansado = reservarDescanso(huecos, bloques, minDescanso, false);
   if (descansado < minDescanso) {
     avisos.push({ tipo: "descanso-recortado", texto: `Hoy solo tienes ${descansado} min de descanso (quieres ${minDescanso}).` });
@@ -233,31 +257,40 @@ function pasada(entrada, { descanso, objetivos, extraNoche }) {
 /**
  * @param {{fecha: string, fijos: object[], tareas: object[], perfil: object,
  *   semana?: {hechosObjetivo: object}, overrides?: {retrasos?: {desde:number, minutos:number}[],
- *   horaLevantarse?: number, horaDormirAnterior?: number}}} entrada
+ *   horaLevantarse?: number, horaDormirAnterior?: number}, ahora?: number, levantarseManana?: number}} entrada
+ *   ahora: minutos locales actuales (solo para hoy). levantarseManana: hora de levantarse del día siguiente.
  * @returns {{fecha, horaLevantarse, bloques, avisos, propuestas, sinColocar}}
  */
 export function planDay(entrada) {
   entrada = { semana: { hechosObjetivo: {} }, overrides: {}, tareas: [], ...entrada };
   entrada.overrides ||= {};
   const { perfil } = entrada;
-  const urgenteFuera = r => r.sinColocar.some(s => s.urgente);
+  const urgenteFuera = r => r.sinColocar.filter(s => s.urgente).reduce((n, s) => n + s.minutos, 0);
 
   let r = pasada(entrada, { descanso: "reservar", objetivos: true, extraNoche: 0 });
   if (urgenteFuera(r)) {
-    r = pasada(entrada, { descanso: "reservar", objetivos: false, extraNoche: 0 });
-    if (urgenteFuera(r)) r = pasada(entrada, { descanso: "sobrante", objetivos: false, extraNoche: 0 });
+    // se recorta en orden (objetivos → descanso → sueño) y se queda la primera pasada que más ayuda
+    let extra = Math.max(0, ((perfil.horasSueno ?? 8) - (perfil.minSleepHours ?? 4)) * 60);
+    if (entrada.levantarseManana != null) {
+      extra = Math.max(0, Math.min(extra, 1440 + entrada.levantarseManana - (perfil.minSleepHours ?? 4) * 60 - perfil.horaDormir));
+    }
+    const pasadas = [
+      pasada(entrada, { descanso: "reservar", objetivos: false, extraNoche: 0 }),
+      pasada(entrada, { descanso: "sobrante", objetivos: false, extraNoche: 0 }),
+      pasada(entrada, { descanso: "nada", objetivos: false, extraNoche: extra }),
+    ];
+    const mejor = Math.min(...pasadas.map(urgenteFuera));
+    const i = pasadas.findIndex(x => urgenteFuera(x) === mejor);
+    r = pasadas[i];
     if (urgenteFuera(r)) {
-      const extra = Math.max(0, ((perfil.horasSueno ?? 8) - (perfil.minSleepHours ?? 4)) * 60);
-      const antes = r;
-      r = pasada(entrada, { descanso: "nada", objetivos: false, extraNoche: extra });
-      for (const f of antes.fija.fijos) {
+      for (const f of r.fija.fijos) {
         if (f.tipo === "entreno" || f.tipo === "partido") r.propuestas.push({ tipo: "no-ir", refId: f.id, motivo: "entrega" });
       }
-      const fin = Math.max(...r.bloques.filter(b => b.tipo === "estudio").map(b => b.fin), 0);
-      if (fin > perfil.horaDormir) {
-        r.avisos.push({ tipo: "sueno-recortado", texto: `Para acabar la entrega te acuestas más tarde de lo normal.` });
-      }
-      if (urgenteFuera(r)) r.avisos.push({ tipo: "entrega-no-cabe", texto: "Hay una entrega urgente que no cabe hoy ni recortando sueño." });
+      r.avisos.push({ tipo: "entrega-no-cabe", texto: "Hay una entrega urgente que no cabe hoy ni recortando sueño." });
+    }
+    const fin = Math.max(...r.bloques.filter(b => b.tipo === "estudio").map(b => b.fin), 0);
+    if (fin > perfil.horaDormir) {
+      r.avisos.push({ tipo: "sueno-recortado", texto: `Para acabar la entrega te acuestas más tarde de lo normal (a las ${String(Math.floor((fin % 1440) / 60)).padStart(2, "0")}:${String(fin % 60).padStart(2, "0")}).` });
     }
     for (const o of perfil.objetivos || []) {
       if (!r.bloques.some(b => b.refId === o.id) && !r.sinColocar.some(s => s.refId === o.id)) r.sinColocar.push({ refId: o.id, minutos: o.minutos });

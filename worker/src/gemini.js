@@ -12,7 +12,9 @@ Tipos de acción:
 - "no-ir": no va a ir a un bloque del plan. Campo: refId (de los bloques del contexto).
 - "hecho": ha terminado una tarea o un paso. Campo: refId.
 - "aplazar": mover una tarea a otro día. Campos: refId, fecha.
-- "trabajo-horario": SOLO si dice explícitamente que le han cambiado el horario del trabajo. Campos: diaSemana (${DIAS}), inicio, fin.
+- "trabajo-horario": SOLO si dice explícitamente que le han cambiado el horario fijo del trabajo (todas las semanas). Campos: diaSemana (${DIAS}), inicio, fin.
+- "trabajo-dia": SOLO si dice explícitamente que un día concreto no trabaja o trabaja en otro horario. Campos: fecha; inicio y fin si trabaja (vacíos = no trabaja ese día).
+- Una entrega con fecha es una "tarea" (tipoTarea "entrega", fechaLimite) con sus pasos, no un "evento".
 Reglas: no inventes fechas ni horas que no se deduzcan del mensaje; las fechas relativas ("el viernes", "mañana") se calculan desde la fecha de hoy. Usa solo refId que aparezcan en el contexto. Si el mensaje no pide nada, devuelve {"acciones":[]}.`;
 
 const ESQUEMA = {
@@ -23,7 +25,7 @@ const ESQUEMA = {
       items: {
         type: "OBJECT",
         properties: {
-          tipo: { type: "STRING", enum: ["tarea", "evento", "retraso", "no-ir", "hecho", "aplazar", "trabajo-horario"] },
+          tipo: { type: "STRING", enum: ["tarea", "evento", "retraso", "no-ir", "hecho", "aplazar", "trabajo-horario", "trabajo-dia"] },
           titulo: { type: "STRING" },
           tipoTarea: { type: "STRING", enum: ["entrega", "examen", "estudio", "otro"] },
           tipoEvento: { type: "STRING", enum: ["entreno", "partido", "entrega", "examen", "clase", "practica", "otro"] },
@@ -72,10 +74,13 @@ export async function llamarGemini({ apiKey, model, sistema, texto, esquema, fet
 }
 
 async function entrada(req, body, env, { json, fetchFn }) {
-  const { texto, fecha, ahora, contexto = {} } = body;
+  const { texto, fecha, fechaVista, ahora, contexto = {} } = body;
   if (!texto || !fecha) return json({ error: "falta texto o fecha" }, 400);
   const h = Math.floor((ahora ?? 0) / 60), m = (ahora ?? 0) % 60;
-  const mensaje = `Hoy es ${fecha} y son las ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}.
+  const DS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  const dia = f => DS[new Date(f + "T12:00:00Z").getUTCDay()];
+  const vista = fechaVista && fechaVista !== fecha ? ` Está mirando el plan del ${dia(fechaVista)} ${fechaVista}.` : "";
+  const mensaje = `Hoy es ${dia(fecha)} ${fecha} y son las ${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}.${vista}
 Contexto (JSON): ${JSON.stringify(contexto)}
 Mensaje: «${texto}»`;
   try {

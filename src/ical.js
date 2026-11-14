@@ -1,11 +1,39 @@
 // Lee un calendario .ics y devuelve las instancias que caen entre dos fechas,
-// con las repeticiones (RRULE), los días quitados (EXDATE) y las instancias movidas
-// (RECURRENCE-ID) ya resueltas.
-import ICAL from "ical.js";
+// con las repeticiones (RRULE), los días quitados (EXDATE), las instancias movidas
+// (RECURRENCE-ID) y las canceladas ya resueltas. Se ejecuta en el móvil (no en el Worker:
+// expandir calendarios grandes se pasaría del tiempo de CPU gratuito de Cloudflare).
+// Las horas sin zona («flotantes») se leen en la hora del dispositivo (Madrid).
+import ICAL from "../vendor/ical.min.js";
 
-const MAX_INSTANCIAS = 2000;
+const MADRID = `BEGIN:VTIMEZONE
+TZID:Europe/Madrid
+BEGIN:DAYLIGHT
+TZOFFSETFROM:+0100
+TZOFFSETTO:+0200
+TZNAME:CEST
+DTSTART:19700329T020000
+RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU
+END:DAYLIGHT
+BEGIN:STANDARD
+TZOFFSETFROM:+0200
+TZOFFSETTO:+0100
+TZNAME:CET
+DTSTART:19701025T030000
+RRULE:FREQ=YEARLY;BYMONTH=10;BYDAY=-1SU
+END:STANDARD
+END:VTIMEZONE`;
+let madridListo = false;
+function registrarMadrid() {
+  if (madridListo) return;
+  madridListo = true;
+  if (!ICAL.TimezoneService.has("Europe/Madrid")) {
+    ICAL.TimezoneService.register("Europe/Madrid", new ICAL.Timezone(new ICAL.Component(ICAL.parse(MADRID))));
+  }
+}
 
-function aSalida(ev, inicio, fin, origen) {
+const MAX_INSTANCIAS = 20000;
+
+function aSalida(ev, inicio, fin, origen, recurrente = false) {
   const todoElDia = inicio.isDate;
   return {
     uid: ev.uid,
@@ -15,6 +43,7 @@ function aSalida(ev, inicio, fin, origen) {
     inicio: todoElDia ? inicio.toString() : inicio.toJSDate().toISOString(),
     fin: todoElDia ? fin.toString() : fin.toJSDate().toISOString(),
     todoElDia,
+    recurrente,
     origen,
   };
 }
@@ -26,6 +55,7 @@ function aSalida(ev, inicio, fin, origen) {
  * @param {string} [origen]
  */
 export function expandir(textoIcs, desde, hasta, origen = "") {
+  registrarMadrid();
   const cal = new ICAL.Component(ICAL.parse(textoIcs));
   for (const tz of cal.getAllSubcomponents("vtimezone")) {
     const zona = new ICAL.Timezone(tz);
@@ -34,8 +64,13 @@ export function expandir(textoIcs, desde, hasta, origen = "") {
 
   const maestros = new Map();
   const excepciones = [];
+  const canceladas = new Set();
   for (const comp of cal.getAllSubcomponents("vevent")) {
-    if ((comp.getFirstPropertyValue("status") || "").toUpperCase() === "CANCELLED") continue;
+    if ((comp.getFirstPropertyValue("status") || "").toUpperCase() === "CANCELLED") {
+      const rid = comp.getFirstPropertyValue("recurrence-id");
+      if (rid) canceladas.add(`${comp.getFirstPropertyValue("uid")}|${rid.toJSDate().getTime()}`);
+      continue;
+    }
     const ev = new ICAL.Event(comp);
     if (comp.hasProperty("recurrence-id")) excepciones.push(ev);
     else maestros.set(ev.uid, ev);
@@ -63,8 +98,9 @@ export function expandir(textoIcs, desde, hasta, origen = "") {
     const it = ev.iterator();
     for (let n = 0, sig; (sig = it.next()) && n < MAX_INSTANCIAS; n++) {
       if (sig.toJSDate().getTime() >= t1) break;
+      if (canceladas.has(`${ev.uid}|${sig.toJSDate().getTime()}`)) continue;
       const det = ev.getOccurrenceDetails(sig);
-      if (solapa(det.startDate, det.endDate)) salida.push(aSalida(det.item, det.startDate, det.endDate, origen));
+      if (solapa(det.startDate, det.endDate)) salida.push(aSalida(det.item, det.startDate, det.endDate, origen, true));
     }
   }
   return salida.sort((a, b) => (a.inicio < b.inicio ? -1 : a.inicio > b.inicio ? 1 : 0));

@@ -73,6 +73,13 @@ export function pintarDia(cont, d, on) {
   });
   html.push(`</ul>`);
 
+  if (d.pasosHechos?.length) {
+    html.push(`<h2>Hecho ${esHoy ? "hoy" : "este día"}</h2><ul class="pasos">${d.pasosHechos.map(id => {
+      const p = pasoDe(id);
+      return p ? `<li><label><input type="checkbox" data-paso="${esc(id)}" checked><span class="hecho">${esc(p.titulo)}</span></label></li>` : "";
+    }).join("")}</ul>`);
+  }
+
   if (plan.sinColocar.length) {
     html.push(`<h2>No cabe ${esHoy ? "hoy" : "mañana"}</h2>`);
     for (const s of plan.sinColocar) html.push(`<p class="sinColocar">${esc(nombre(s.refId))}: ${s.minutos} min → pasa a otro día</p>`);
