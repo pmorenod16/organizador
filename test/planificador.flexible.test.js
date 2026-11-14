@@ -87,3 +87,9 @@ test("lo no urgente que no cabe va a sinColocar", () => {
   assert.ok(p.sinColocar.some(x => x.refId === "s" && x.minutos > 0));
   assert.equal(p.avisos.some(a => a.tipo === "descanso-recortado"), false);
 });
+
+test("una tarea aplazada no se planifica antes de su fecha", () => {
+  const t = tarea("t", "estudio", null, [30], { aplazadaHasta: "2026-11-18" });
+  assert.equal(de(planDay(caso({ tareas: [t] })), "t").length, 0);
+  assert.equal(de(planDay(caso({ fecha: "2026-11-18", tareas: [t] })), "t").length, 1);
+});

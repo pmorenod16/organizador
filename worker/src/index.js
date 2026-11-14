@@ -53,4 +53,5 @@ export function crearApp({ verificar, fetchFn = (u, o) => fetch(u, o), rutas = {
   };
 }
 
-export default crearApp();
+import { rutasIA } from "./gemini.js";
+export default crearApp({ rutas: rutasIA });

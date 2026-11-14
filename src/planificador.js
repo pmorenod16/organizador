@@ -190,7 +190,7 @@ function ordenarTareas(tareas, fecha) {
   const manana = new Date(fecha + "T12:00:00Z"); manana.setUTCDate(manana.getUTCDate() + 1);
   const limiteUrgente = manana.toISOString().slice(0, 10);
   return tareas
-    .filter(t => t.pasos?.some(p => !p.hecho) && (!t.fechaLimite || t.fechaLimite >= fecha) && t.tipo !== "gym" && t.tipo !== "flexible")
+    .filter(t => t.pasos?.some(p => !p.hecho) && (!t.fechaLimite || t.fechaLimite >= fecha) && !(t.aplazadaHasta > fecha) && t.tipo !== "gym" && t.tipo !== "flexible")
     .map(t => ({ ...t, urgente: !!t.fechaLimite && t.fechaLimite <= limiteUrgente && (t.tipo === "entrega" || t.tipo === "examen") }))
     .sort((a, b) => (ORDEN_TIPO[a.tipo] ?? 2) - (ORDEN_TIPO[b.tipo] ?? 2)
       || (a.fechaLimite || "9999").localeCompare(b.fechaLimite || "9999"));
