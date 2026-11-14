@@ -58,3 +58,9 @@ test("entregas: eventos del Moodle y títulos de entrega → tareas con fecha l�
   assert.ok(t[0].id.startsWith("ical:"));
   assert.equal(t[0].pasos.length, 1);
 });
+test("Feina / Treball / Trabajo del calendario → trabajo obligatorio", () => {
+  for (const t of ["Feina – Sant Ponç", "Treball (POL) – Sant Ponç", "Trabajo GEiEG"]) {
+    const e = uno(ev(t));
+    assert.deepEqual([e.tipo, e.obligatorio], ["trabajo", true], t);
+  }
+});

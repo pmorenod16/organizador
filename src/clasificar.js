@@ -5,12 +5,13 @@ import { aMinutos, fechaLocal, sumarDias } from "./tiempo.js";
 export const normal = s => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
 
 const REGLAS = [
+  ["trabajo", /\b(feina|treball|trabajo)\b/],
   ["practica", /\b(practica|practiques|laboratori|laboratorio|lab)\b/],
   ["examen", /\b(examen|examens|prova|parcial|final)\b/],
   ["entreno", /\b(entreno|entrenament|entrenamiento|handbol|balonmano)\b/],
   ["partido", /\b(partido|partit|futbol)\b/],
 ];
-const OBLIGATORIOS = new Set(["practica", "examen"]);
+const OBLIGATORIOS = new Set(["practica", "examen", "trabajo"]);
 const ENTREGA = /\b(entrega|lliurament|venciment|vence|due|tancament|termini)\b/;
 
 // Lo que no se reconoce por el título es «clase» si coincide con una asignatura o se repite
@@ -23,6 +24,7 @@ function tipoDe(e, perfil) {
 }
 
 const UNIVERSIDAD = new Set(["clase", "practica", "examen"]);
+const TRABAJO = "trabajo";
 
 function sitioDe(e, perfil, tipo) {
   const ub = normal(e.ubicacion);
@@ -31,6 +33,7 @@ function sitioDe(e, perfil, tipo) {
   for (const a of perfil.asignaturas || []) if (a.nombre && t.includes(normal(a.nombre))) return a.sitioId || null;
   // clases, prácticas y exámenes de los calendarios: en el campus por defecto
   if (e.origen !== "manual" && UNIVERSIDAD.has(tipo)) return perfil.campusDefecto ?? perfil.asignaturas?.[0]?.sitioId ?? null;
+  if (tipo === TRABAJO) return perfil.trabajoSitioId ?? null;
   return null;
 }
 

@@ -44,6 +44,7 @@ export function pintarConfiguracion(cont, perfilActual, on) {
   pasoCalendarios.html = () => `<h2>Tus calendarios</h2>
     <p>La app solo los <b>lee</b>; nunca escribe en ellos.</p>
     ${campoCal("google", "Google Calendar (clases y eventos)", `<ol><li>En el ordenador, abre <b>calendar.google.com</b> → ⚙️ <b>Configuración</b>.</li><li>A la izquierda, toca tu calendario → <b>Integrar el calendario</b>.</li><li>Copia la <b>Dirección secreta en formato iCal</b> y pégala aquí.</li></ol>`)}
+    ${campoCal("google2", "Otro Google Calendar (si usas otra cuenta)", `Si tienes citas o turnos en otra cuenta de Google, saca su <b>Dirección secreta en formato iCal</b> igual que la del primero (con esa cuenta abierta) y pégala aquí. Si no, déjalo vacío.`)}
     ${campoCal("examenes", "Calendario de exámenes (si tienes otro enlace)", `Pega el enlace que tengas (empieza por <code>https://</code> o <code>webcal://</code>). Si los exámenes ya están en Google Calendar, déjalo vacío.`)}
     ${campoCal("moodle", "Moodle de la UdG (entregas)", `<ol><li>En el Moodle, abre <b>Calendari</b>.</li><li>Pulsa <b>Exporta el calendari</b> (o <b>Importa o exporta calendaris</b> → <b>Exporta</b>).</li><li>Elige <b>Tots els cursos</b> y <b>Esdeveniments recents i propers</b>, pulsa <b>Obtén l'URL del calendari</b> y pégala aquí.</li></ol>`)}`;
   function campoCal(id, titulo, ayuda) {
@@ -57,7 +58,7 @@ export function pintarConfiguracion(cont, perfilActual, on) {
     res.textContent = "Probando…";
     try { res.innerHTML = `<span class="ok">✓ ${esc(await on.probarCalendario(url))}</span>`; } catch (e) { res.textContent = "✗ " + e.message; }
   });
-  pasoCalendarios.leer = () => { for (const id of ["google", "examenes", "moodle"]) p.calendarios[id] = $(`#cal-${id}`).value.trim(); };
+  pasoCalendarios.leer = () => { for (const id of ["google", "google2", "examenes", "moodle"]) p.calendarios[id] = $(`#cal-${id}`).value.trim(); };
 
   function pasoSitios() {}
   pasoSitios.html = () => `<h2>Tus sitios y lo que tardas desde casa</h2>
@@ -90,7 +91,7 @@ export function pintarConfiguracion(cont, perfilActual, on) {
 
   function pasoHorarios() {}
   pasoHorarios.html = () => `<h2>Trabajo (GEiEG)</h2>
-    <p class="suave">Deja vacío el día que no trabajas. Solo cambia si tú lo dices.</p>
+    <p class="suave">Si tus turnos ya están en Google Calendar (eventos llamados «Feina», «Treball» o «Trabajo»), deja todo vacío: la app los lee de ahí. Si tienes horario fijo, ponlo aquí. El trabajo nunca se mueve.</p>
     ${DIAS.map((d, i) => { const t = p.trabajo.find(x => x.diaSemana === i); return `<div class="fila campo"><span>${d}</span><input type="time" data-tini="${i}" value="${hora(t?.inicio)}"><input type="time" data-tfin="${i}" value="${hora(t?.fin)}"></div>`; }).join("")}
     <h2>Sueño</h2>
     <div class="fila"><label class="campo"><span>Te acuestas a las</span><input type="time" id="dormir" value="${hora(p.horaDormir % 1440)}"></label>
