@@ -45,6 +45,7 @@ input, select, textarea { font: inherit; padding: .55em .7em; border: 1px solid 
 .bloque .hora { font-variant-numeric: tabular-nums; font-weight: 600; font-size: .95rem; }
 .bloque .hora small { display: block; color: var(--suave); font-weight: 400; }
 .bloque .titulo { font-weight: 600; }
+.bloque .dur { font-weight: 400; font-size: .82rem; color: var(--suave); white-space: nowrap; }
 .bloque .detalle { color: var(--suave); font-size: .88rem; }
 .bloque.actual { outline: 2px solid var(--azul); }
 .bloque.pasado { opacity: .55; }

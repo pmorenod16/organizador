@@ -73,8 +73,9 @@ export function pintarDia(cont, d, on) {
       detalle = `<ul class="pasos"><li><label><input type="checkbox" data-objetivo="${esc(b.refId)}" ${hecho ? "checked" : ""}><span class="${hecho ? "hecho" : ""}">Hecho</span></label></li></ul>`;
     }
     const menu = FIJOS.has(b.tipo) && i != null ? `<button class="menu" data-menu="${i}" aria-label="Opciones">⋯</button>` : "<span></span>";
-    html.push(`<li class="${clases.join(" ")}"><div class="hora">${hhmm(b.inicio)}${b.tipo !== "trayecto" && b.tipo !== "rutina" ? `<small>${dur(b)}</small>` : ""}</div>
-      <div><div class="titulo">${esc(b.titulo)}</div>${detalle}</div>${menu}</li>`);
+    // hora de inicio y de fin; la duración, al lado del título
+    html.push(`<li class="${clases.join(" ")}"><div class="hora">${hhmm(b.inicio)}<small>${hhmm(b.fin)}</small></div>
+      <div><div class="titulo">${esc(b.titulo)} <span class="dur">${dur(b)}</span></div>${detalle}</div>${menu}</li>`);
   });
   html.push(`</ul>`);
 
