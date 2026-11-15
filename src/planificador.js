@@ -4,7 +4,7 @@
 // Reglas (spec §4): el trabajo y las prácticas no se tocan; prioridad estudios → entrenos/partidos
 // → gym y objetivos; si una entrega urgente no cabe se recorta, en este orden, objetivos → descanso
 // → sueño (hasta minSleepHours). Entrenos/partidos y clases solo se proponen saltar, nunca se quitan.
-import { diaSemana } from "./tiempo.js?v=202611150752";
+import { diaSemana } from "./tiempo.js?v=202611150759";
 
 const MAX_BLOQUE = 90;
 const MIN_TROZO = 30;
@@ -180,12 +180,15 @@ function colocarObjetivos(entrada, huecos, bloques, avisos) {
   const { perfil, fecha, semana } = entrada;
   const margen = perfil.margen ?? 10;
   const sinColocar = [];
+  const hoyNo = new Set(entrada.overrides?.objetivosNo || []);
   for (const o of perfil.objetivos || []) {
     const faltan = o.vecesSemana - (semana?.hechosObjetivo?.[o.id] || 0);
-    if (faltan <= 0) continue;
+    if (faltan <= 0 || hoyNo.has(o.id)) continue;
     let puesto = false;
     // horario de apertura (si lo tiene): solo esos tramos del día; sin tramo ese día = cerrado
-    const abierto = o.horario?.length ? o.horario.filter(x => x.diaSemana === diaSemana(fecha)) : [{ inicio: -Infinity, fin: Infinity }];
+    let abierto = o.horario?.length ? o.horario.filter(x => x.diaSemana === diaSemana(fecha)) : [{ inicio: -Infinity, fin: Infinity }];
+    // «llegar como muy tarde a las…» (p. ej. los abuelos se acuestan pronto)
+    if (o.llegarAntesDe != null) abierto = abierto.map(t => ({ ...t, fin: Math.min(t.fin, o.llegarAntesDe + o.minutos) }));
     for (const h of huecos) {
       const ida = trayecto(perfil, h.sitio, o.sitioId), vuelta = ida;
       const tramo = abierto.find(t => Math.max(h.inicio + margen + ida, t.inicio) + o.minutos <= Math.min(h.fin - vuelta, t.fin));

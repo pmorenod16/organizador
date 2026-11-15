@@ -1,8 +1,8 @@
 // Junta calendarios, eventos apuntados a mano, tareas y lo hecho en la semana
 // en la entrada que necesita planDay().
-import { clasificar, entregas, normal } from "./clasificar.js?v=202611150752";
-import { deMinutos, diaSemana, sumarDias, fechaLocal } from "./tiempo.js?v=202611150752";
-import { diaFecha } from "./acciones.js?v=202611150752";
+import { clasificar, entregas, normal } from "./clasificar.js?v=202611150759";
+import { deMinutos, diaSemana, sumarDias, fechaLocal } from "./tiempo.js?v=202611150759";
+import { diaFecha } from "./acciones.js?v=202611150759";
 
 const EXAMEN = /\b(examen|examens|prova|parcial|final)\b/;
 const BLOQUE = 45;
@@ -115,6 +115,6 @@ export function montarDia({ fecha, eventos, perfil, tareas, dias }) {
     perfil,
     // la primera semana de uso no se sabe lo hecho antes: no se avisa de objetivos imposibles
     semana: { hechosObjetivo: contarSemana(dias, fecha, false), completa: !!perfil.creadoEl && perfil.creadoEl <= sumarDias(fecha, -diaSemana(fecha)) },
-    overrides: { retrasos: dia.retrasos || [], ...(dia.horaLevantarse != null ? { horaLevantarse: dia.horaLevantarse } : {}) },
+    overrides: { retrasos: dia.retrasos || [], objetivosNo: dia.objetivosNo || [], ...(dia.horaLevantarse != null ? { horaLevantarse: dia.horaLevantarse } : {}) },
   };
 }

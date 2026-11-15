@@ -1,7 +1,7 @@
 // Asistente de configuración: corto, con todo rellenado por defecto. Se puede volver a abrir desde ⚙️.
-import { esc } from "./dia.js?v=202611150752";
-import { hhmm } from "../tiempo.js?v=202611150752";
-import { completarPerfil } from "../perfil.js?v=202611150752";
+import { esc } from "./dia.js?v=202611150759";
+import { hhmm } from "../tiempo.js?v=202611150759";
+import { completarPerfil } from "../perfil.js?v=202611150759";
 
 const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 const aMin = v => { if (!v) return null; const [h, m] = String(v).split(":").map(Number); return Number.isFinite(h) ? h * 60 + (m || 0) : null; };
@@ -129,6 +129,7 @@ export function pintarConfiguracion(cont, perfilActual, on) {
     <h2>Objetivos de la semana</h2>
     <p class="suave">Van por detrás del estudio y los entrenos: si no caben, pasan a otro día.</p>
     ${p.objetivos.map((o, i) => `<div class="campo"><span>${esc(o.titulo)}</span><div class="fila"><label>Veces/semana<input type="number" data-overes="${i}" min="0" max="7" value="${o.vecesSemana}"></label><label>Minutos<input type="number" data-omin="${i}" min="10" max="300" value="${o.minutos}"></label></div>
+      ${o.tipo === "flexible" ? `<label class="campo"><span>Llegar como muy tarde a las (vacío = sin límite)</span><input type="time" data-ollegar="${i}" value="${hora(o.llegarAntesDe)}"></label>` : ""}
       ${o.tipo === "gym" ? `<details class="ayuda" ${o.horario?.length ? "open" : ""}><summary>Horario de apertura (vacío = siempre abierto; día vacío = cerrado)</summary>
         ${DIAS.map((d, j) => { const t = o.horario?.find(x => x.diaSemana === j); return `<div class="fila campo"><span>${d}</span><input type="time" data-hini="${i}-${j}" value="${hora(t?.inicio)}"><input type="time" data-hfin="${i}-${j}" value="${hora(t?.fin)}"></div>`; }).join("")}
       </details>` : ""}</div>`).join("")}
@@ -144,6 +145,7 @@ export function pintarConfiguracion(cont, perfilActual, on) {
     p.estudio = { ...(p.estudio || {}), minutosDia: Math.round((+$("#horasEstudio").value || 0) * 60) };
     p.objetivos = p.objetivos.map((o, i) => {
       const n = { ...o, vecesSemana: +$(`[data-overes="${i}"]`).value || 0, minutos: +$(`[data-omin="${i}"]`).value || o.minutos };
+      if (o.tipo === "flexible") n.llegarAntesDe = aMin($(`[data-ollegar="${i}"]`).value);
       if (o.tipo === "gym") {
         n.horario = DIAS.map((_, j) => ({ diaSemana: j, inicio: aMin($(`[data-hini="${i}-${j}"]`).value), fin: aMin($(`[data-hfin="${i}-${j}"]`).value) }))
           .filter(t => t.inicio != null && t.fin != null && t.fin > t.inicio);

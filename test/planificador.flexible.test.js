@@ -116,3 +116,17 @@ test("el gym solo se coloca cuando está abierto (horario por día)", () => {
   // un día sin horario apuntado → cerrado
   assert.equal(de(planDay(caso({ fecha: "2026-11-16", perfil })), "gym").length, 0);
 });
+
+test("abuelos: llegar como muy tarde a las 20:00", () => {
+  const perfil = { ...perfilBase(), objetivos: [{ id: "ab", titulo: "Abuelos", tipo: "flexible", vecesSemana: 1, minutos: 120, sitioId: null, llegarAntesDe: 20 * 60 }] };
+  // día ocupado hasta las 20:30 → no cabe
+  const p = planDay(caso({ fecha: "2026-11-22", perfil, fijos: [fijo("x", 8 * 60 + 40, 20 * 60 + 30, { sitioId: null, tipo: "otro" })] }));
+  assert.equal(de(p, "ab").length, 0);
+  // ocupado hasta las 19:00 → empieza antes de las 20:00
+  const p2 = planDay(caso({ fecha: "2026-11-22", perfil, fijos: [fijo("x", 8 * 60 + 40, 19 * 60, { sitioId: null, tipo: "otro" })] }));
+  assert.ok(de(p2, "ab")[0].inicio <= 20 * 60);
+});
+test("un objetivo marcado 'hoy no' no se coloca ese día", () => {
+  const p = planDay(caso({ perfil: conGym(), overrides: { objetivosNo: ["gym"] } }));
+  assert.equal(de(p, "gym").length, 0);
+});

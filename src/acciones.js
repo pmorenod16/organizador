@@ -1,6 +1,6 @@
 // Acciones que propone la IA a partir de lo que escribes o dices.
 // Nada se aplica sin confirmar: validar() → describir() en la tarjeta → aplicar() al pulsar «Aplicar».
-import { hhmm } from "./tiempo.js?v=202611150752";
+import { hhmm } from "./tiempo.js?v=202611150759";
 
 const TIPOS = new Set(["tarea", "evento", "retraso", "no-ir", "hecho", "aplazar", "trabajo-horario", "trabajo-dia"]);
 const TIPOS_TAREA = new Set(["entrega", "examen", "estudio", "otro"]);
@@ -137,7 +137,8 @@ export function aplicar(estado, acciones, { ahora = 0 } = {}) {
         e.dia.retrasos.push({ desde: ahora, minutos: a.minutos });
         break;
       case "no-ir":
-        e.dia.marcas[a.refId] = { ...(e.dia.marcas[a.refId] || {}), asistir: false };
+        if ((e.perfil.objetivos || []).some(o => o.id === a.refId)) e.dia.objetivosNo = [...new Set([...(e.dia.objetivosNo || []), a.refId])];
+        else e.dia.marcas[a.refId] = { ...(e.dia.marcas[a.refId] || {}), asistir: false };
         break;
       case "hecho":
         if ((e.perfil.objetivos || []).some(o => o.id === a.refId)) e.dia.hechosObjetivo = { ...(e.dia.hechosObjetivo || {}), [a.refId]: true };

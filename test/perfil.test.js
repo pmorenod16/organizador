@@ -28,3 +28,7 @@ test("horario del gym: L-V 6:30-22, sábado 7-14, domingo 8-14; se añade a un p
   assert.deepEqual([g.vecesSemana, g.horario], [4, esperado]);
   assert.deepEqual(completarPerfil({ objetivos: [{ id: "gym", tipo: "gym", horario: [] }] }).objetivos[0].horario, []);
 });
+test("abuelos: como muy tarde a las 20:00, también en perfiles guardados", () => {
+  assert.equal(perfilPorDefecto().objetivos.find(o => o.id === "abuelos").llegarAntesDe, 1200);
+  assert.equal(completarPerfil({ objetivos: [{ id: "abuelos", tipo: "flexible" }] }).objetivos[0].llegarAntesDe, 1200);
+});

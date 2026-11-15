@@ -1,6 +1,6 @@
 // Llamadas al Worker (calendarios e IA). El token de Firebase demuestra que eres tú.
-import { WORKER_URL } from "../config.js?v=202611150752";
-import { expandir } from "./ical.js?v=202611150752";
+import { WORKER_URL } from "../config.js?v=202611150759";
+import { expandir } from "./ical.js?v=202611150759";
 
 let obtenerToken = async () => "";
 export const usarToken = fn => { obtenerToken = fn; };

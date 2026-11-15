@@ -1,6 +1,6 @@
 // Vista del día: «Ahora toca», hora de levantarse, avisos, propuestas y la línea del día.
-import { hhmm } from "../tiempo.js?v=202611150752";
-import { huecosLibres } from "./libre.js?v=202611150752";
+import { hhmm } from "../tiempo.js?v=202611150759";
+import { huecosLibres } from "./libre.js?v=202611150759";
 
 export const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
@@ -53,7 +53,15 @@ export function pintarDia(cont, d, on) {
 
   // el día completo: bloques + tiempo libre entre ellos
   const libres = huecosLibres(plan, perfil.horaDormir).map(h => ({ ...h, tipo: "libre", titulo: "Tiempo libre" }));
-  const todos = [...plan.bloques.map((b, i) => ({ ...b, i })), ...libres].sort((a, b) => a.inicio - b.inicio);
+  const LIBRE = new Set(["libre", "descanso"]);
+  const todos = [...plan.bloques.map((b, i) => ({ ...b, i })), ...libres].sort((a, b) => a.inicio - b.inicio)
+    // tramos de tiempo libre seguidos se ven como uno solo
+    .reduce((acc, b) => {
+      const prev = acc[acc.length - 1];
+      if (prev && LIBRE.has(prev.tipo) && LIBRE.has(b.tipo) && prev.fin >= b.inicio) prev.fin = Math.max(prev.fin, b.fin);
+      else acc.push(LIBRE.has(b.tipo) ? { ...b, tipo: "libre", titulo: "Tiempo libre", i: undefined } : b);
+      return acc;
+    }, []);
   html.push(`<ul class="linea">`);
   todos.forEach(b => {
     const i = b.i;
@@ -72,12 +80,16 @@ export function pintarDia(cont, d, on) {
       const hecho = !!d.hechosHoy?.[b.refId];
       detalle = `<ul class="pasos"><li><label><input type="checkbox" data-objetivo="${esc(b.refId)}" ${hecho ? "checked" : ""}><span class="${hecho ? "hecho" : ""}">Hecho</span></label></li></ul>`;
     }
-    const menu = FIJOS.has(b.tipo) && i != null ? `<button class="menu" data-menu="${i}" aria-label="Opciones">⋯</button>` : "<span></span>";
+    const menu = (FIJOS.has(b.tipo) || OBJETIVOS.has(b.tipo)) && i != null ? `<button class="menu" data-menu="${i}" aria-label="Opciones">⋯</button>` : "<span></span>";
     // hora de inicio y de fin; la duración, al lado del título
     html.push(`<li class="${clases.join(" ")}"><div class="hora">${hhmm(b.inicio)}<small>${hhmm(b.fin)}</small></div>
       <div><div class="titulo">${esc(b.titulo)} <span class="dur">${dur(b)}</span></div>${detalle}</div>${menu}</li>`);
   });
   html.push(`</ul>`);
+
+  if (d.objetivosNo?.length) {
+    html.push(`<p class="sinColocar">Hoy no: ${d.objetivosNo.map(id => `${esc(perfil.objetivos?.find(o => o.id === id)?.titulo || id)} <button class="btn peque" data-volver="${esc(id)}">Volver a ponerlo</button>`).join(" ")}</p>`);
+  }
 
   if (d.pasosHechos?.length) {
     html.push(`<h2>Hecho ${esHoy ? "hoy" : "este día"}</h2><ul class="pasos">${d.pasosHechos.map(id => {
@@ -96,5 +108,6 @@ export function pintarDia(cont, d, on) {
   cont.querySelectorAll("[data-objetivo]").forEach(el => el.onchange = () => on.objetivo(el.dataset.objetivo, el.checked));
   cont.querySelectorAll("[data-propuesta]").forEach(el => el.onclick = () => on.propuesta(plan.propuestas[+el.dataset.propuesta], el.dataset.acepta === "1"));
   cont.querySelectorAll("[data-menu]").forEach(el => el.onclick = () => on.menuBloque(plan.bloques[+el.dataset.menu]));
+  cont.querySelectorAll("[data-volver]").forEach(el => el.onclick = () => on.volverObjetivo(el.dataset.volver));
   cont.querySelector("[data-accion=alarma]")?.addEventListener("click", () => on.alarma());
 }

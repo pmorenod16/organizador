@@ -82,3 +82,7 @@ test("M11: horas imposibles se rechazan", () => {
   assert.equal(validar({ acciones: [{ tipo: "trabajo-horario", diaSemana: 0, inicio: "25:00", fin: "26:00" }] }).ok, false);
   assert.equal(validar({ acciones: [{ tipo: "evento", titulo: "x", fecha: "2026-11-18", inicio: "10:00", fin: "11:00", diasSemana: [9] }] }).ok, false);
 });
+test("no-ir de un objetivo (abuelos) → dia.objetivosNo", () => {
+  const s = estado(); s.perfil.objetivos = [{ id: "abuelos" }];
+  assert.deepEqual(aplicar(s, [{ tipo: "no-ir", refId: "abuelos" }], {}).dia.objetivosNo, ["abuelos"]);
+});

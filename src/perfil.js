@@ -28,7 +28,7 @@ export function perfilPorDefecto() {
     trabajoSitioId: "geieg",
     objetivos: [
       { id: "gym", titulo: "Gym", tipo: "gym", vecesSemana: 3, minutos: 75, sitioId: "gym", horario: HORARIO_GYM },
-      { id: "abuelos", titulo: "Ver a los abuelos", tipo: "flexible", vecesSemana: 1, minutos: 120, sitioId: "abuelos" },
+      { id: "abuelos", titulo: "Ver a los abuelos", tipo: "flexible", vecesSemana: 1, minutos: 120, sitioId: "abuelos", llegarAntesDe: 20 * 60 },
     ],
     asignaturas: [],
     campusDefecto: "udg",
@@ -44,7 +44,8 @@ export function completarPerfil(p = {}) {
   const d = perfilPorDefecto();
   const r = { ...d, ...p, calendarios: { ...d.calendarios, ...(p.calendarios || {}) } };
   // perfiles guardados antes de existir el horario del gym: se le pone el horario conocido
-  r.objetivos = r.objetivos.map(o => (o.tipo === "gym" && o.horario === undefined ? { ...o, horario: HORARIO_GYM } : o));
+  r.objetivos = r.objetivos.map(o => (o.tipo === "gym" && o.horario === undefined ? { ...o, horario: HORARIO_GYM } : o))
+    .map(o => (o.id === "abuelos" && o.llegarAntesDe === undefined ? { ...o, llegarAntesDe: 20 * 60 } : o));
   return r;
 }
 

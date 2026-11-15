@@ -1,18 +1,18 @@
 // Arranque: login, carga de datos, plan del día y entrada por texto/voz.
-import { firebaseConfig, OWNER_UID } from "../config.js?v=202611150752";
-import * as store from "./store.js?v=202611150752";
-import * as ia from "./ia.js?v=202611150752";
-import { planDay } from "./planificador.js?v=202611150752";
-import { montarDia, combinarTareas } from "./montar.js?v=202611150752";
-import { entregas } from "./clasificar.js?v=202611150752";
-import { validar, describir, aplicar } from "./acciones.js?v=202611150752";
-import { completarPerfil, urlsCalendario } from "./perfil.js?v=202611150752";
-import { fechaLocal, sumarDias, aMinutos, diaSemana, hhmm } from "./tiempo.js?v=202611150752";
-import { pintarDia, esc } from "./vistas/dia.js?v=202611150752";
-import { pintarConfiguracion } from "./vistas/configuracion.js?v=202611150752";
-import { esNativo, programarAvisos, ponerAlarma, escucharVoz } from "./nativo.js?v=202611150752";
+import { firebaseConfig, OWNER_UID } from "../config.js?v=202611150759";
+import * as store from "./store.js?v=202611150759";
+import * as ia from "./ia.js?v=202611150759";
+import { planDay } from "./planificador.js?v=202611150759";
+import { montarDia, combinarTareas } from "./montar.js?v=202611150759";
+import { entregas } from "./clasificar.js?v=202611150759";
+import { validar, describir, aplicar } from "./acciones.js?v=202611150759";
+import { completarPerfil, urlsCalendario } from "./perfil.js?v=202611150759";
+import { fechaLocal, sumarDias, aMinutos, diaSemana, hhmm } from "./tiempo.js?v=202611150759";
+import { pintarDia, esc } from "./vistas/dia.js?v=202611150759";
+import { pintarConfiguracion } from "./vistas/configuracion.js?v=202611150759";
+import { esNativo, programarAvisos, ponerAlarma, escucharVoz } from "./nativo.js?v=202611150759";
 
-export const APP_VERSION = "202611150752";
+export const APP_VERSION = "202611150759";
 
 const $ = s => document.querySelector(s);
 const PANTALLAS = ["carga", "login", "sinAcceso", "app"];
@@ -75,7 +75,7 @@ catch { db = F.getFirestore(app); }
 
 let _core;
 const pluginAuth = async () => {
-  const reg = typeof window.Capacitor?.registerPlugin === "function" ? window.Capacitor.registerPlugin : (_core ||= await import("../capacitor-core.js?v=202611150752")).registerPlugin;
+  const reg = typeof window.Capacitor?.registerPlugin === "function" ? window.Capacitor.registerPlugin : (_core ||= await import("../capacitor-core.js?v=202611150759")).registerPlugin;
   return { p: reg("FirebaseAuthentication") };
 };
 $("#btnGoogle").onclick = async () => {
@@ -173,12 +173,13 @@ function pintar() {
   S.plan = plan; S.tareasVista = tareas;
   document.querySelectorAll("[data-vista]").forEach(b => b.setAttribute("aria-selected", String(b.dataset.vista === S.vista)));
   const pasosHechos = (S.dias[fecha]?.pasosHechos || []).filter(id => tareas.some(t => t.pasos.some(p => p.id === id && p.hecho)));
-  pintarDia($("#vista"), { plan, esHoy: S.vista === "hoy", ahora: ahora(), tareas, perfil: S.perfil, hechosHoy: S.dias[fecha]?.hechosObjetivo, pasosHechos, nativo: esNativo() }, {
+  pintarDia($("#vista"), { plan, esHoy: S.vista === "hoy", ahora: ahora(), tareas, perfil: S.perfil, hechosHoy: S.dias[fecha]?.hechosObjetivo, pasosHechos, objetivosNo: S.dias[fecha]?.objetivosNo, nativo: esNativo() }, {
     paso: (id, hecho) => cambiarPaso(fecha, id, hecho),
     objetivo: (id, hecho) => guardarDia(fecha, { hechosObjetivo: { ...(S.dias[fecha]?.hechosObjetivo || {}), [id]: hecho } }),
     propuesta: (p, acepta) => acepta ? aplicarAcciones([{ tipo: "no-ir", refId: p.refId }, ...(p.tipo === "saltar-clase" ? [recuperar(plan, p.refId)] : [])], fecha)
       : guardarDia(fecha, { propuestasNo: [...(S.dias[fecha]?.propuestasNo || []), `${p.tipo}:${p.refId}`] }),
     menuBloque: b => menuBloque(b, fecha),
+    volverObjetivo: id => guardarDia(fecha, { objetivosNo: (S.dias[fecha]?.objetivosNo || []).filter(x => x !== id) }),
     alarma: async () => { await ponerAlarma(plan.horaLevantarse); toast(`Alarma puesta a las ${hhmm(plan.horaLevantarse)}`); },
   });
   // avisos de hoy y de mañana (por si mañana no abres la app)
@@ -221,6 +222,15 @@ async function cambiarPaso(fecha, pasoId, hecho) {
 }
 
 function menuBloque(b, fecha) {
+  if (b.tipo === "gym" || b.tipo === "flexible") {
+    modal(`<h2>${esc(b.titulo)}</h2><p class="suave">${hhmm(b.inicio)}–${hhmm(b.fin)}</p>
+      <div class="botones" style="flex-direction:column;align-items:stretch">
+        <button class="btn" data-op="hoyno">Hoy no</button>
+        <button class="btn" data-op="cerrar">Cerrar</button></div>`, async op => {
+      if (op === "hoyno") await aplicarAcciones([{ tipo: "no-ir", refId: b.refId }], fecha);
+    });
+    return;
+  }
   const marca = (S.perfil.marcas || {})[b.refId?.split("@")[0]] || {};
   const obligatorio = b.tipo === "practica" || b.tipo === "examen";
   modal(`<h2>${esc(b.titulo)}</h2><p class="suave">${hhmm(b.inicio)}–${hhmm(b.fin)}</p>
@@ -238,8 +248,10 @@ function menuBloque(b, fecha) {
 }
 
 // ---------- acciones (IA o botones) ----------
+const tareasDe = fecha => montarDia({ fecha, eventos: S.eventos, perfil: S.perfil, tareas: S.tareas, dias: S.dias }).tareas;
+
 async function aplicarAcciones(acciones, fecha = fechaVista()) {
-  const antes = { perfil: S.perfil, tareas: combinarTareas(entregas(S.eventos, S.perfil), S.tareas), dia: { fecha, ...(S.dias[fecha] || {}) } };
+  const antes = { perfil: S.perfil, tareas: tareasDe(fecha), dia: { fecha, ...(S.dias[fecha] || {}) } };
   const despues = aplicar(antes, acciones, { ahora: fecha === hoy() ? ahora() : 0 });
   const cambiadas = despues.tareas.filter(t => JSON.stringify(t) !== JSON.stringify(antes.tareas.find(x => x.id === t.id)));
   const perfilCambia = JSON.stringify(despues.perfil) !== JSON.stringify(S.perfil);
@@ -256,7 +268,7 @@ async function aplicarAcciones(acciones, fecha = fechaVista()) {
 }
 
 function contextoIA() {
-  const tareas = combinarTareas(entregas(S.eventos, S.perfil), S.tareas).filter(t => t.pasos.some(p => !p.hecho)).slice(0, 40);
+  const tareas = tareasDe(fechaVista()).filter(t => t.pasos.some(p => !p.hecho)).slice(0, 40);
   return {
     asignaturas: S.perfil.asignaturas.map(a => a.nombre),
     sitios: S.perfil.sitios.map(s => s.nombre),
