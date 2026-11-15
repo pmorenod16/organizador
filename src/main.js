@@ -12,7 +12,7 @@ import { pintarDia, esc } from "./vistas/dia.js";
 import { pintarConfiguracion } from "./vistas/configuracion.js";
 import { esNativo, programarAvisos, ponerAlarma, escucharVoz } from "./nativo.js";
 
-export const APP_VERSION = "2026-11-15-1";
+export const APP_VERSION = "2026-11-15-3";
 
 const $ = s => document.querySelector(s);
 const PANTALLAS = ["carga", "login", "sinAcceso", "app"];
@@ -129,6 +129,7 @@ async function recargarDatos() {
   const lunes = sumarDias(hoy(), -diaSemana(hoy()));
   const [perfil, tareas, dias] = await Promise.all([store.cargarPerfil(), store.cargarTareas(), store.cargarDias(lunes, sumarDias(hoy(), 1))]);
   Object.assign(S, { perfil: perfil && completarPerfil(perfil), tareas, dias, cargadoDia: hoy() });
+  if (S.perfil && !S.perfil.creadoEl) { S.perfil.creadoEl = hoy(); await store.guardarPerfil(S.perfil); }
 }
 
 async function cargarEventos(forzar = false) {
@@ -312,6 +313,7 @@ function abrirConfiguracion() {
       return `${r.eventos.length} eventos en las próximas 2 semanas`;
     },
     guardar: async p => {
+      p.creadoEl ||= hoy();
       S.perfil = p;
       await store.guardarPerfil(p);
       $("#entrada").hidden = false;

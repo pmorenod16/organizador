@@ -121,7 +121,10 @@ export function pintarConfiguracion(cont, perfilActual, on) {
 
   function pasoObjetivos() {}
   const entreno = () => p.eventosManuales.find(e => e.id === "balonmano");
-  pasoObjetivos.html = () => `<h2>Objetivos de la semana</h2>
+  pasoObjetivos.html = () => `<h2>Estudio</h2>
+    <label class="campo"><span>Horas de estudio para examen cada día (se reparten entre tus asignaturas; las que tienen examen antes, primero)</span>
+      <input type="number" id="horasEstudio" min="0" max="10" step="0.5" value="${(p.estudio?.minutosDia ?? 180) / 60}"></label>
+    <h2>Objetivos de la semana</h2>
     <p class="suave">Van por detrás del estudio y los entrenos: si no caben, pasan a otro día.</p>
     ${p.objetivos.map((o, i) => `<div class="campo"><span>${esc(o.titulo)}</span><div class="fila"><label>Veces/semana<input type="number" data-overes="${i}" min="0" max="7" value="${o.vecesSemana}"></label><label>Minutos<input type="number" data-omin="${i}" min="10" max="300" value="${o.minutos}"></label></div></div>`).join("")}
     <h2>Entrenos de balonmano</h2>
@@ -133,6 +136,7 @@ export function pintarConfiguracion(cont, perfilActual, on) {
     <p class="ayuda">Los partidos de fútbol de la uni y cualquier otra cosa se apuntan diciéndoselo a la app («el jueves a las 18 tengo partido»). Los PDFs de las asignaturas llegarán en la siguiente fase.</p>`;
   pasoObjetivos.enlazar = () => { $("#hayEntreno").onchange = e => { $("#entrenoDatos").hidden = !e.target.checked; }; };
   pasoObjetivos.leer = () => {
+    p.estudio = { ...(p.estudio || {}), minutosDia: Math.round((+$("#horasEstudio").value || 0) * 60) };
     p.objetivos = p.objetivos.map((o, i) => ({ ...o, vecesSemana: +$(`[data-overes="${i}"]`).value || 0, minutos: +$(`[data-omin="${i}"]`).value || o.minutos }));
     p.eventosManuales = p.eventosManuales.filter(e => e.id !== "balonmano");
     if ($("#hayEntreno").checked) {

@@ -53,6 +53,8 @@ input, select, textarea { font: inherit; padding: .55em .7em; border: 1px solid 
 .bloque.t-gym, .bloque.t-flexible, .bloque.t-entreno, .bloque.t-partido { border-color: var(--deporte); }
 .bloque.t-descanso { border-color: var(--descanso); }
 .bloque.t-comida { border-color: var(--comida); }
+.bloque.t-libre { border-color: transparent; background: transparent; border: 1px dashed var(--linea); }
+.bloque.t-libre .titulo { font-weight: 400; color: var(--suave); }
 .bloque.t-trayecto, .bloque.t-rutina { border-color: var(--trayecto); background: transparent; padding: 4px 12px; }
 .bloque.t-trayecto .titulo, .bloque.t-rutina .titulo { font-weight: 400; color: var(--suave); }
 .pasos { list-style: none; padding: 0; margin: 6px 0 0; }

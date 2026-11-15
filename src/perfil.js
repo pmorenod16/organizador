@@ -27,6 +27,7 @@ export function perfilPorDefecto() {
     ],
     asignaturas: [],
     campusDefecto: "udg",
+    estudio: { minutosDia: 180 },
     trabajoExcepciones: {},
     calendarios: { google: "", google2: "", examenes: "", moodle: "" },
     marcas: {},

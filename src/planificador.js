@@ -196,7 +196,7 @@ function colocarObjetivos(entrada, huecos, bloques, avisos) {
     }
     if (!puesto) sinColocar.push({ refId: o.id, minutos: o.minutos });
     const restantes = faltan - (puesto ? 1 : 0);
-    if (restantes > diasQuedan - 1) {
+    if (restantes > diasQuedan - 1 && semana?.completa !== false) {
       avisos.push({ tipo: "objetivo-incumplible", texto: `Esta semana no llegas a ${o.titulo} ${o.vecesSemana} veces (faltan ${faltan}).` });
     }
   }
