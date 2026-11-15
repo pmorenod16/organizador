@@ -130,3 +130,10 @@ test("un objetivo marcado 'hoy no' no se coloca ese día", () => {
   const p = planDay(caso({ perfil: conGym(), overrides: { objetivosNo: ["gym"] } }));
   assert.equal(de(p, "gym").length, 0);
 });
+
+test("el tiempo libre reservado va al final del día, no justo antes de una cita", () => {
+  const fijos = [fijo("cita", 18 * 60, 20 * 60, { sitioId: null, tipo: "otro" })];
+  const p = planDay(caso({ fecha: "2026-11-22", fijos, tareas: [tarea("t", "estudio", null, [90, 90])] }));
+  const d = p.bloques.filter(b => b.tipo === "descanso");
+  assert.ok(d.length && d.every(b => b.inicio >= 20 * 60), JSON.stringify(d));
+});

@@ -4,7 +4,7 @@
 // Reglas (spec §4): el trabajo y las prácticas no se tocan; prioridad estudios → entrenos/partidos
 // → gym y objetivos; si una entrega urgente no cabe se recorta, en este orden, objetivos → descanso
 // → sueño (hasta minSleepHours). Entrenos/partidos y clases solo se proponen saltar, nunca se quitan.
-import { diaSemana } from "./tiempo.js?v=202611150820";
+import { diaSemana } from "./tiempo.js?v=202611150839";
 
 const MAX_BLOQUE = 90;
 const MIN_TROZO = 30;
@@ -168,7 +168,9 @@ function reservarDescanso(huecos, bloques, minutos, completo) {
   if (!minutos) return 0;
   const tarde = huecos.filter(h => h.fin > TARDE && h.fin - Math.max(h.inicio, TARDE) > 0);
   if (!tarde.length) return 0;
-  const h = tarde.reduce((a, b) => (b.fin - b.inicio >= a.fin - a.inicio ? b : a));
+  // al final del día (el último hueco donde quepa entero); si no cabe en ninguno, en el más largo
+  const h = [...tarde].reverse().find(x => x.fin - x.inicio >= minutos)
+    || tarde.reduce((a, b) => (b.fin - b.inicio >= a.fin - a.inicio ? b : a));
   const dur = Math.min(minutos, h.fin - h.inicio);
   if (dur <= 0 || (!completo && dur < minutos && dur < MIN_TROZO)) return 0;
   bloques.push({ inicio: h.fin - dur, fin: h.fin, tipo: "descanso", titulo: "Tiempo libre", refId: null, sitioId: h.sitio });

@@ -1,6 +1,6 @@
 // Convierte los eventos de los calendarios en bloques fijos del día (EventoFijo)
 // y saca las entregas como tareas.
-import { aMinutos, fechaLocal, sumarDias } from "./tiempo.js?v=202611150820";
+import { aMinutos, fechaLocal, sumarDias } from "./tiempo.js?v=202611150839";
 
 export const normal = s => (s || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, " ").trim();
 
@@ -54,7 +54,7 @@ const esDelMoodle = (e, perfil) => !e.tipoManual && esMoodle(e, perfil);
  * @param {string} fecha "YYYY-MM-DD"
  * @param {object} perfil
  * @param {{[idOUid: string]: {obligatorio?: boolean, tipo?: string, asistir?: boolean}}} marcas
- * @returns {import("./tipos.js?v=202611150820").EventoFijo[]}
+ * @returns {import("./tipos.js?v=202611150839").EventoFijo[]}
  */
 export function clasificar(eventos, fecha, perfil, marcas = {}) {
   const vistos = new Set();
