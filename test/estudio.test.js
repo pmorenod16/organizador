@@ -52,10 +52,10 @@ test("no quedan pasos de estudio de menos de 30 min si la asignatura tiene más 
     if (total >= 30) assert.ok(x.pasos.every(p => p.minutos >= 30), JSON.stringify(x.pasos.map(p => p.minutos)));
   }
 });
-test("la primera semana de uso no avisa de objetivos incumplibles", () => {
+test("no se avisa de objetivos incumplibles", () => {
   const p = { ...perfil(), creadoEl: "2026-11-15" };
-  const e = montarDia({ fecha: "2026-11-15", eventos: [], perfil: p, tareas: [], dias: {} });
-  assert.equal(planDay(e).avisos.some(a => a.tipo === "objetivo-incumplible"), false);
-  const e2 = montarDia({ fecha: "2026-11-22", eventos: [], perfil: p, tareas: [], dias: {} });
-  assert.equal(planDay(e2).avisos.some(a => a.tipo === "objetivo-incumplible"), true);
+  for (const f of ["2026-11-15", "2026-11-22"]) {
+    const e = montarDia({ fecha: f, eventos: [], perfil: p, tareas: [], dias: {} });
+    assert.equal(planDay(e).avisos.some(a => a.tipo === "objetivo-incumplible"), false);
+  }
 });

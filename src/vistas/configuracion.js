@@ -1,7 +1,7 @@
 // Asistente de configuración: corto, con todo rellenado por defecto. Se puede volver a abrir desde ⚙️.
-import { esc } from "./dia.js";
-import { hhmm } from "../tiempo.js";
-import { completarPerfil } from "../perfil.js";
+import { esc } from "./dia.js?v=202611150744";
+import { hhmm } from "../tiempo.js?v=202611150744";
+import { completarPerfil } from "../perfil.js?v=202611150744";
 
 const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 const aMin = v => { if (!v) return null; const [h, m] = String(v).split(":").map(Number); return Number.isFinite(h) ? h * 60 + (m || 0) : null; };

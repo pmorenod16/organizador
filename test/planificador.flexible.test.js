@@ -43,9 +43,9 @@ test("gym no se coloca si el objetivo semanal ya está cumplido", () => {
   assert.equal(de(planDay(caso({ perfil: conGym(), semana: { hechosObjetivo: { gym: 3 } } })), "gym").length, 0);
 });
 
-test("objetivo imposible esta semana → aviso", () => {
+test("objetivo imposible esta semana → sin aviso (decidido por el usuario: no pasa nada)", () => {
   const p = planDay(caso({ fecha: "2026-11-22", perfil: conGym() })); // domingo, 0 hechos de 3
-  assert.ok(p.avisos.some(a => a.tipo === "objetivo-incumplible"));
+  assert.equal(p.avisos.some(a => a.tipo === "objetivo-incumplible"), false);
 });
 
 test("entrega urgente quita el gym antes que el descanso", () => {

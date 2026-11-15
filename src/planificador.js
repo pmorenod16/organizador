@@ -4,7 +4,7 @@
 // Reglas (spec §4): el trabajo y las prácticas no se tocan; prioridad estudios → entrenos/partidos
 // → gym y objetivos; si una entrega urgente no cabe se recorta, en este orden, objetivos → descanso
 // → sueño (hasta minSleepHours). Entrenos/partidos y clases solo se proponen saltar, nunca se quitan.
-import { diaSemana } from "./tiempo.js";
+import { diaSemana } from "./tiempo.js?v=202611150744";
 
 const MAX_BLOQUE = 90;
 const MIN_TROZO = 30;
@@ -177,7 +177,6 @@ function reservarDescanso(huecos, bloques, minutos, completo) {
 function colocarObjetivos(entrada, huecos, bloques, avisos) {
   const { perfil, fecha, semana } = entrada;
   const margen = perfil.margen ?? 10;
-  const diasQuedan = 7 - diaSemana(fecha);
   const sinColocar = [];
   for (const o of perfil.objetivos || []) {
     const faltan = o.vecesSemana - (semana?.hechosObjetivo?.[o.id] || 0);
@@ -199,10 +198,7 @@ function colocarObjetivos(entrada, huecos, bloques, avisos) {
       break;
     }
     if (!puesto) sinColocar.push({ refId: o.id, minutos: o.minutos });
-    const restantes = faltan - (puesto ? 1 : 0);
-    if (restantes > diasQuedan - 1 && semana?.completa !== false) {
-      avisos.push({ tipo: "objetivo-incumplible", texto: `Esta semana no llegas a ${o.titulo} ${o.vecesSemana} veces (faltan ${faltan}).` });
-    }
+    // si el objetivo no se puede cumplir esta semana no se avisa: no pasa nada (decidido por el usuario)
   }
   return sinColocar;
 }

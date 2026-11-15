@@ -1,18 +1,18 @@
 // Arranque: login, carga de datos, plan del día y entrada por texto/voz.
-import { firebaseConfig, OWNER_UID } from "../config.js";
-import * as store from "./store.js";
-import * as ia from "./ia.js";
-import { planDay } from "./planificador.js";
-import { montarDia, combinarTareas } from "./montar.js";
-import { entregas } from "./clasificar.js";
-import { validar, describir, aplicar } from "./acciones.js";
-import { completarPerfil, urlsCalendario } from "./perfil.js";
-import { fechaLocal, sumarDias, aMinutos, diaSemana, hhmm } from "./tiempo.js";
-import { pintarDia, esc } from "./vistas/dia.js";
-import { pintarConfiguracion } from "./vistas/configuracion.js";
-import { esNativo, programarAvisos, ponerAlarma, escucharVoz } from "./nativo.js";
+import { firebaseConfig, OWNER_UID } from "../config.js?v=202611150744";
+import * as store from "./store.js?v=202611150744";
+import * as ia from "./ia.js?v=202611150744";
+import { planDay } from "./planificador.js?v=202611150744";
+import { montarDia, combinarTareas } from "./montar.js?v=202611150744";
+import { entregas } from "./clasificar.js?v=202611150744";
+import { validar, describir, aplicar } from "./acciones.js?v=202611150744";
+import { completarPerfil, urlsCalendario } from "./perfil.js?v=202611150744";
+import { fechaLocal, sumarDias, aMinutos, diaSemana, hhmm } from "./tiempo.js?v=202611150744";
+import { pintarDia, esc } from "./vistas/dia.js?v=202611150744";
+import { pintarConfiguracion } from "./vistas/configuracion.js?v=202611150744";
+import { esNativo, programarAvisos, ponerAlarma, escucharVoz } from "./nativo.js?v=202611150744";
 
-export const APP_VERSION = "2026-11-15-6";
+export const APP_VERSION = "202611150744";
 
 const $ = s => document.querySelector(s);
 const PANTALLAS = ["carga", "login", "sinAcceso", "app"];
@@ -75,7 +75,7 @@ catch { db = F.getFirestore(app); }
 
 let _core;
 const pluginAuth = async () => {
-  const reg = typeof window.Capacitor?.registerPlugin === "function" ? window.Capacitor.registerPlugin : (_core ||= await import("../capacitor-core.js")).registerPlugin;
+  const reg = typeof window.Capacitor?.registerPlugin === "function" ? window.Capacitor.registerPlugin : (_core ||= await import("../capacitor-core.js?v=202611150744")).registerPlugin;
   return { p: reg("FirebaseAuthentication") };
 };
 $("#btnGoogle").onclick = async () => {
