@@ -105,3 +105,10 @@ test("C3: un evento suelto que no es de la uni (cena) no va al campus", () => {
   const [f] = clasificar([ev], "2026-11-16", { ...perfilBase(), campusDefecto: "udg" }, {});
   assert.deepEqual([f.tipo, f.sitioId], ["otro", null]);
 });
+
+test("Moodle: el aviso de apertura de un qüestionari no es una entrega; el de cierre sí", () => {
+  const m = (titulo, inicio) => ({ uid: titulo, titulo, desc: "", ubicacion: "", inicio, fin: inicio, todoElDia: false, origen: "moodle" });
+  const t = entregas([m("Qüestionari tema 3 s'obre", "2026-11-17T08:00:00.000Z"), m("Qüestionari tema 3 es tanca", "2026-11-20T22:00:00.000Z"),
+    m("Quiz 2 opens", "2026-11-17T08:00:00.000Z"), m("Quiz 2 closes", "2026-11-19T22:00:00.000Z")], { calendarios: { moodle: "moodle" } });
+  assert.deepEqual(t.map(x => x.titulo), ["Qüestionari tema 3 es tanca", "Quiz 2 closes"]);
+});

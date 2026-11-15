@@ -38,7 +38,16 @@ function sitioDe(e, perfil, tipo) {
 }
 
 const esMoodle = (e, perfil) => !!perfil.calendarios?.moodle && e.origen === perfil.calendarios.moodle;
-const esEntrega = (e, perfil) => (e.tipoManual ? e.tipoManual === "entrega" : esMoodle(e, perfil) || ENTREGA.test(normal(e.titulo)));
+// Avisos del Moodle que solo dicen que algo se abre (no son fechas límite)
+const APERTURA = /(s'obre|\bobre\b|\bopens?\b|se abre|\bapertura\b|\bobertura\b)/;
+const esEntrega = (e, perfil) => {
+  if (e.tipoManual) return e.tipoManual === "entrega";
+  const t = normal(e.titulo);
+  if (esMoodle(e, perfil)) return !APERTURA.test(t);
+  return ENTREGA.test(t);
+};
+// Lo que el Moodle publica (también la apertura) no es una clase ni un bloque fijo
+const esDelMoodle = (e, perfil) => !e.tipoManual && esMoodle(e, perfil);
 
 /**
  * @param {Array} eventos de /eventos
@@ -51,7 +60,7 @@ export function clasificar(eventos, fecha, perfil, marcas = {}) {
   const vistos = new Set();
   const salida = [];
   for (const e of eventos) {
-    if (e.todoElDia || esEntrega(e, perfil)) continue;
+    if (e.todoElDia || esEntrega(e, perfil) || esDelMoodle(e, perfil)) continue;
     let inicio = aMinutos(e.inicio, fecha);
     const fin = aMinutos(e.fin, fecha);
     if (fin <= 0 || inicio >= 1440) continue;

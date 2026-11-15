@@ -12,7 +12,7 @@ import { pintarDia, esc } from "./vistas/dia.js";
 import { pintarConfiguracion } from "./vistas/configuracion.js";
 import { esNativo, programarAvisos, ponerAlarma, escucharVoz } from "./nativo.js";
 
-export const APP_VERSION = "2026-11-14-3";
+export const APP_VERSION = "2026-11-15-1";
 
 const $ = s => document.querySelector(s);
 const PANTALLAS = ["carga", "login", "sinAcceso", "app"];
