@@ -1,7 +1,7 @@
 // Asistente de configuración: corto, con todo rellenado por defecto. Se puede volver a abrir desde ⚙️.
-import { esc } from "./dia.js?v=202611150744";
-import { hhmm } from "../tiempo.js?v=202611150744";
-import { completarPerfil } from "../perfil.js?v=202611150744";
+import { esc } from "./dia.js?v=202611150752";
+import { hhmm } from "../tiempo.js?v=202611150752";
+import { completarPerfil } from "../perfil.js?v=202611150752";
 
 const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
 const aMin = v => { if (!v) return null; const [h, m] = String(v).split(":").map(Number); return Number.isFinite(h) ? h * 60 + (m || 0) : null; };
@@ -103,7 +103,8 @@ export function pintarConfiguracion(cont, perfilActual, on) {
     <h2>Comidas y descanso</h2>
     ${p.comidas.map((c, i) => `<div class="fila campo"><span>${esc(c.titulo)}</span><input type="time" data-chora="${i}" value="${hora(c.hora)}"><input class="estrecho" type="number" data-cmin="${i}" value="${c.minutos}"></div>`).join("")}
     <div class="fila"><label class="campo"><span>Descanso al día (min)</span><input type="number" id="descanso" min="0" max="300" value="${p.descansoMinDia}"></label>
-      <label class="campo"><span>Margen entre cosas (min)</span><input type="number" id="margen" min="0" max="30" value="${p.margen}"></label></div>`;
+      <label class="campo"><span>Margen entre cosas (min)</span><input type="number" id="margen" min="0" max="30" value="${p.margen}"></label></div>
+    <label class="campo"><span>Margen al llegar a clase o al trabajo (min de más, además del trayecto)</span><input type="number" id="margenLlegada" min="0" max="30" value="${p.margenLlegada ?? 5}"></label>`;
   pasoHorarios.leer = () => {
     p.trabajo = DIAS.map((_, i) => ({ diaSemana: i, inicio: aMin($(`[data-tini="${i}"]`).value), fin: aMin($(`[data-tfin="${i}"]`).value) }))
       .filter(t => t.inicio != null && t.fin != null);
@@ -117,6 +118,7 @@ export function pintarConfiguracion(cont, perfilActual, on) {
     p.comidas = p.comidas.map((c, i) => ({ ...c, hora: aMin($(`[data-chora="${i}"]`).value) ?? c.hora, minutos: +$(`[data-cmin="${i}"]`).value || c.minutos }));
     p.descansoMinDia = +$("#descanso").value || 0;
     p.margen = +$("#margen").value || 0;
+    p.margenLlegada = +$("#margenLlegada").value || 0;
   };
 
   function pasoObjetivos() {}

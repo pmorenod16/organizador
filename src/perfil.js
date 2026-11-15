@@ -21,6 +21,7 @@ export function perfilPorDefecto() {
     horasSueno: 8,
     minSleepHours: 4,
     margen: 10,
+    margenLlegada: 5,
     descansoMinDia: 60,
     levantarseDefecto: 8 * 60,
     trabajo: [],

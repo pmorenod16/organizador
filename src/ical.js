@@ -3,7 +3,7 @@
 // (RECURRENCE-ID) y las canceladas ya resueltas. Se ejecuta en el móvil (no en el Worker:
 // expandir calendarios grandes se pasaría del tiempo de CPU gratuito de Cloudflare).
 // Las horas sin zona («flotantes») se leen en la hora del dispositivo (Madrid).
-import ICAL from "../vendor/ical.min.js?v=202611150744";
+import ICAL from "../vendor/ical.min.js?v=202611150752";
 
 const MADRID = `BEGIN:VTIMEZONE
 TZID:Europe/Madrid

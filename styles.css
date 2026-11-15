@@ -52,7 +52,8 @@ input, select, textarea { font: inherit; padding: .55em .7em; border: 1px solid 
 .bloque.t-estudio { border-color: var(--estudio); }
 .bloque.t-trabajo { border-color: var(--trabajo); }
 .bloque.t-gym, .bloque.t-flexible, .bloque.t-entreno, .bloque.t-partido { border-color: var(--deporte); }
-.bloque.t-descanso { border-color: var(--descanso); }
+.bloque.t-descanso { border: 1px dashed var(--linea); background: transparent; }
+.bloque.t-descanso .titulo { font-weight: 400; color: var(--suave); }
 .bloque.t-comida { border-color: var(--comida); }
 .bloque.t-libre { border-color: transparent; background: transparent; border: 1px dashed var(--linea); }
 .bloque.t-libre .titulo { font-weight: 400; color: var(--suave); }

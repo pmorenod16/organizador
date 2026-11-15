@@ -4,7 +4,7 @@
 // Reglas (spec §4): el trabajo y las prácticas no se tocan; prioridad estudios → entrenos/partidos
 // → gym y objetivos; si una entrega urgente no cabe se recorta, en este orden, objetivos → descanso
 // → sueño (hasta minSleepHours). Entrenos/partidos y clases solo se proponen saltar, nunca se quitan.
-import { diaSemana } from "./tiempo.js?v=202611150744";
+import { diaSemana } from "./tiempo.js?v=202611150752";
 
 const MAX_BLOQUE = 90;
 const MIN_TROZO = 30;
@@ -50,6 +50,8 @@ function fijosDelDia({ fecha, fijos, perfil, overrides }) {
 function parteFija(entrada, extraNoche) {
   const { perfil, overrides } = entrada;
   const margen = perfil.margen ?? 10;
+  // margen al llegar a algo fijo (clase, trabajo…): el usuario sale justo, como mucho 5 min antes de lo necesario
+  const llegada = perfil.margenLlegada ?? margen;
   const casa = perfil.casaId;
   const fijos = fijosDelDia(entrada);
   const avisos = [], propuestas = [], bloques = [], huecos = [];
@@ -58,7 +60,7 @@ function parteFija(entrada, extraNoche) {
   const primero = fijos.find(f => f.tipo !== "comida" && f.inicio >= 0);
   let levantarse = perfil.levantarseDefecto;
   if (primero) {
-    const salir = primero.inicio - margen - trayecto(perfil, casa, primero.sitioId);
+    const salir = primero.inicio - llegada - trayecto(perfil, casa, primero.sitioId);
     levantarse = Math.min(levantarse, salir - rutina);
   }
   if (overrides.horaLevantarse != null) levantarse = overrides.horaLevantarse;
@@ -91,7 +93,7 @@ function parteFija(entrada, extraNoche) {
     if (!conocido(perfil, sitio, destino)) {
       avisos.push({ tipo: "trayecto-desconocido", texto: `No sé cuánto tardas de ${nombreSitio(perfil, sitio)} a ${nombreSitio(perfil, destino)}; cuento 15 min.` });
     }
-    const listo = f.tipo === "comida" ? f.inicio : f.inicio - margen;
+    const listo = f.tipo === "comida" ? f.inicio : f.inicio - llegada;
     const salida = Math.max(cursor, listo - t);
     if (salida > cursor) huecos.push({ inicio: cursor, fin: salida, sitio });
     if (t > 0) {
@@ -107,7 +109,7 @@ function parteFija(entrada, extraNoche) {
       const siguiente = fijos.slice(fijos.indexOf(original) + 1).find(n => n.tipo !== "comida");
       const tv = trayecto(perfil, sitio, casa);
       const ini = cursor + margen;
-      if (!siguiente || (siguiente.sitioId === casa && ini + tv <= siguiente.inicio - margen)) {
+      if (!siguiente || (siguiente.sitioId === casa && ini + tv <= siguiente.inicio - llegada)) {
         bloques.push({ inicio: ini, fin: ini + tv, tipo: "trayecto", titulo: `Volver a ${nombreSitio(perfil, casa)}`, refId: null, sitioId: casa });
         cursor = ini + tv;
         sitio = casa;
@@ -169,7 +171,7 @@ function reservarDescanso(huecos, bloques, minutos, completo) {
   const h = tarde.reduce((a, b) => (b.fin - b.inicio >= a.fin - a.inicio ? b : a));
   const dur = Math.min(minutos, h.fin - h.inicio);
   if (dur <= 0 || (!completo && dur < minutos && dur < MIN_TROZO)) return 0;
-  bloques.push({ inicio: h.fin - dur, fin: h.fin, tipo: "descanso", titulo: "Descanso", refId: null, sitioId: h.sitio });
+  bloques.push({ inicio: h.fin - dur, fin: h.fin, tipo: "descanso", titulo: "Tiempo libre", refId: null, sitioId: h.sitio });
   h.fin -= dur;
   return dur;
 }

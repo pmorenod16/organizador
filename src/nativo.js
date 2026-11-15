@@ -1,6 +1,6 @@
 // Puente con Android (Capacitor): avisos, alarma y voz. En la web, la voz usa el navegador
 // y los avisos y la alarma no hacen nada.
-import { deMinutos, hhmm } from "./tiempo.js?v=202611150744";
+import { deMinutos, hhmm } from "./tiempo.js?v=202611150752";
 
 export const esNativo = () => !!(window.Capacitor?.isNativePlatform?.());
 
@@ -10,7 +10,7 @@ export const esNativo = () => !!(window.Capacitor?.isNativePlatform?.());
 const plugins = {};
 function plug(nombre) {
   return plugins[nombre] ||= (async () => {
-    const reg = typeof window.Capacitor?.registerPlugin === "function" ? window.Capacitor.registerPlugin : (await import("../capacitor-core.js?v=202611150744")).registerPlugin;
+    const reg = typeof window.Capacitor?.registerPlugin === "function" ? window.Capacitor.registerPlugin : (await import("../capacitor-core.js?v=202611150752")).registerPlugin;
     return { p: reg(nombre) };
   })();
 }

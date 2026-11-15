@@ -1,8 +1,8 @@
 // Junta calendarios, eventos apuntados a mano, tareas y lo hecho en la semana
 // en la entrada que necesita planDay().
-import { clasificar, entregas, normal } from "./clasificar.js?v=202611150744";
-import { deMinutos, diaSemana, sumarDias, fechaLocal } from "./tiempo.js?v=202611150744";
-import { diaFecha } from "./acciones.js?v=202611150744";
+import { clasificar, entregas, normal } from "./clasificar.js?v=202611150752";
+import { deMinutos, diaSemana, sumarDias, fechaLocal } from "./tiempo.js?v=202611150752";
+import { diaFecha } from "./acciones.js?v=202611150752";
 
 const EXAMEN = /\b(examen|examens|prova|parcial|final)\b/;
 const BLOQUE = 45;

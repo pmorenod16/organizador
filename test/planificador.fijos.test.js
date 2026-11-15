@@ -94,3 +94,14 @@ test("la comida no se solapa con el camino de vuelta: empieza al llegar", () => 
   const c = p.bloques.find(b => b.titulo === "Comida");
   assert.deepEqual([c.inicio, c.fin, c.sitioId], [860, 905, "casa"]);
 });
+
+test("margen al llegar: con margenLlegada 5 sales 20 min antes (15 de trayecto + 5)", () => {
+  const perfil = { ...perfilBase(), margenLlegada: 5, trabajo: [{ diaSemana: 0, inicio: 16 * 60, fin: 20 * 60 }] };
+  const p = planDay(caso({ perfil, fijos: [fijo("c1", 540, 660)] }));
+  const ida = p.bloques.filter(b => b.tipo === "trayecto" && b.titulo.startsWith("Ir a"));
+  assert.deepEqual(ida.map(b => [b.inicio, b.fin]), [[520, 535], [940, 955]]);
+});
+test("el descanso reservado se enseña como tiempo libre", () => {
+  const p = planDay(caso());
+  assert.ok(p.bloques.filter(b => b.tipo === "descanso").every(b => b.titulo === "Tiempo libre"));
+});
