@@ -183,9 +183,13 @@ function colocarObjetivos(entrada, huecos, bloques, avisos) {
     const faltan = o.vecesSemana - (semana?.hechosObjetivo?.[o.id] || 0);
     if (faltan <= 0) continue;
     let puesto = false;
+    // horario de apertura (si lo tiene): solo esos tramos del día; sin tramo ese día = cerrado
+    const abierto = o.horario?.length ? o.horario.filter(x => x.diaSemana === diaSemana(fecha)) : [{ inicio: -Infinity, fin: Infinity }];
     for (const h of huecos) {
       const ida = trayecto(perfil, h.sitio, o.sitioId), vuelta = ida;
-      const ini = h.inicio + margen;
+      const tramo = abierto.find(t => Math.max(h.inicio + margen + ida, t.inicio) + o.minutos <= Math.min(h.fin - vuelta, t.fin));
+      if (!tramo) continue;
+      const ini = Math.max(h.inicio + margen, tramo.inicio - ida);
       if (ini + ida + o.minutos + vuelta > h.fin) continue;
       if (ida) bloques.push({ inicio: ini, fin: ini + ida, tipo: "trayecto", titulo: `Ir a ${nombreSitio(perfil, o.sitioId)}`, refId: null, sitioId: o.sitioId });
       bloques.push({ inicio: ini + ida, fin: ini + ida + o.minutos, tipo: o.tipo, titulo: o.titulo, refId: o.id, sitioId: o.sitioId || h.sitio });

@@ -126,7 +126,10 @@ export function pintarConfiguracion(cont, perfilActual, on) {
       <input type="number" id="horasEstudio" min="0" max="10" step="0.5" value="${(p.estudio?.minutosDia ?? 180) / 60}"></label>
     <h2>Objetivos de la semana</h2>
     <p class="suave">Van por detrás del estudio y los entrenos: si no caben, pasan a otro día.</p>
-    ${p.objetivos.map((o, i) => `<div class="campo"><span>${esc(o.titulo)}</span><div class="fila"><label>Veces/semana<input type="number" data-overes="${i}" min="0" max="7" value="${o.vecesSemana}"></label><label>Minutos<input type="number" data-omin="${i}" min="10" max="300" value="${o.minutos}"></label></div></div>`).join("")}
+    ${p.objetivos.map((o, i) => `<div class="campo"><span>${esc(o.titulo)}</span><div class="fila"><label>Veces/semana<input type="number" data-overes="${i}" min="0" max="7" value="${o.vecesSemana}"></label><label>Minutos<input type="number" data-omin="${i}" min="10" max="300" value="${o.minutos}"></label></div>
+      ${o.tipo === "gym" ? `<details class="ayuda" ${o.horario?.length ? "open" : ""}><summary>Horario de apertura (vacío = siempre abierto; día vacío = cerrado)</summary>
+        ${DIAS.map((d, j) => { const t = o.horario?.find(x => x.diaSemana === j); return `<div class="fila campo"><span>${d}</span><input type="time" data-hini="${i}-${j}" value="${hora(t?.inicio)}"><input type="time" data-hfin="${i}-${j}" value="${hora(t?.fin)}"></div>`; }).join("")}
+      </details>` : ""}</div>`).join("")}
     <h2>Entrenos de balonmano</h2>
     <label class="fila"><input type="checkbox" id="hayEntreno" style="width:auto" ${entreno() ? "checked" : ""}> <span>Voy a entrenar con el equipo</span></label>
     <div id="entrenoDatos" ${entreno() ? "" : "hidden"}>
@@ -137,7 +140,14 @@ export function pintarConfiguracion(cont, perfilActual, on) {
   pasoObjetivos.enlazar = () => { $("#hayEntreno").onchange = e => { $("#entrenoDatos").hidden = !e.target.checked; }; };
   pasoObjetivos.leer = () => {
     p.estudio = { ...(p.estudio || {}), minutosDia: Math.round((+$("#horasEstudio").value || 0) * 60) };
-    p.objetivos = p.objetivos.map((o, i) => ({ ...o, vecesSemana: +$(`[data-overes="${i}"]`).value || 0, minutos: +$(`[data-omin="${i}"]`).value || o.minutos }));
+    p.objetivos = p.objetivos.map((o, i) => {
+      const n = { ...o, vecesSemana: +$(`[data-overes="${i}"]`).value || 0, minutos: +$(`[data-omin="${i}"]`).value || o.minutos };
+      if (o.tipo === "gym") {
+        n.horario = DIAS.map((_, j) => ({ diaSemana: j, inicio: aMin($(`[data-hini="${i}-${j}"]`).value), fin: aMin($(`[data-hfin="${i}-${j}"]`).value) }))
+          .filter(t => t.inicio != null && t.fin != null && t.fin > t.inicio);
+      }
+      return n;
+    });
     p.eventosManuales = p.eventosManuales.filter(e => e.id !== "balonmano");
     if ($("#hayEntreno").checked) {
       const dias = DIAS.map((_, i) => i).filter(i => $(`[data-edia="${i}"]`).checked);

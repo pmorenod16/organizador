@@ -102,3 +102,17 @@ test("no se deja un trozo suelto de menos de 15 min al partir un paso", () => {
   assert.equal(de(p, "t").length, 1);
   assert.equal(minutosDe(p, "t"), 40);
 });
+
+test("el gym solo se coloca cuando está abierto (horario por día)", () => {
+  const perfil = { ...conGym(), objetivos: [{ ...conGym().objetivos[0], horario: [{ diaSemana: 6, inicio: 9 * 60, fin: 14 * 60 }] }] };
+  // domingo: solo de 9 a 14; la mañana está ocupada hasta las 13:30 → no cabe
+  const ocupado = [fijo("x", 8 * 60 + 40, 13 * 60 + 30, { sitioId: null, tipo: "otro" })];
+  const p = planDay(caso({ fecha: "2026-11-22", perfil, fijos: ocupado }));
+  assert.equal(de(p, "gym").length, 0);
+  // domingo libre → dentro del horario
+  const p2 = planDay(caso({ fecha: "2026-11-22", perfil }));
+  const g = de(p2, "gym")[0];
+  assert.ok(g.inicio >= 9 * 60 && g.fin <= 14 * 60, `${g.inicio}-${g.fin}`);
+  // un día sin horario apuntado → cerrado
+  assert.equal(de(planDay(caso({ fecha: "2026-11-16", perfil })), "gym").length, 0);
+});
