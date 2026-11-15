@@ -1,4 +1,8 @@
 // Perfil por defecto: con esto la app ya funciona y todo se puede ajustar después.
+
+// Horario del gym (dicho por el usuario): L-V 6:30-22, sábado 7-14, domingo 8-14
+const HORARIO_GYM = [0, 1, 2, 3, 4].map(d => ({ diaSemana: d, inicio: 6 * 60 + 30, fin: 22 * 60 }))
+  .concat([{ diaSemana: 5, inicio: 7 * 60, fin: 14 * 60 }, { diaSemana: 6, inicio: 8 * 60, fin: 14 * 60 }]);
 export function perfilPorDefecto() {
   return {
     casaId: "casa",
@@ -22,7 +26,7 @@ export function perfilPorDefecto() {
     trabajo: [],
     trabajoSitioId: "geieg",
     objetivos: [
-      { id: "gym", titulo: "Gym", tipo: "gym", vecesSemana: 3, minutos: 75, sitioId: "gym" },
+      { id: "gym", titulo: "Gym", tipo: "gym", vecesSemana: 3, minutos: 75, sitioId: "gym", horario: HORARIO_GYM },
       { id: "abuelos", titulo: "Ver a los abuelos", tipo: "flexible", vecesSemana: 1, minutos: 120, sitioId: "abuelos" },
     ],
     asignaturas: [],
@@ -37,7 +41,10 @@ export function perfilPorDefecto() {
 
 export function completarPerfil(p = {}) {
   const d = perfilPorDefecto();
-  return { ...d, ...p, calendarios: { ...d.calendarios, ...(p.calendarios || {}) } };
+  const r = { ...d, ...p, calendarios: { ...d.calendarios, ...(p.calendarios || {}) } };
+  // perfiles guardados antes de existir el horario del gym: se le pone el horario conocido
+  r.objetivos = r.objetivos.map(o => (o.tipo === "gym" && o.horario === undefined ? { ...o, horario: HORARIO_GYM } : o));
+  return r;
 }
 
 export const urlsCalendario = p => Object.values(p.calendarios || {}).filter(u => u && u.trim());

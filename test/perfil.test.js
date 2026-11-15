@@ -20,3 +20,11 @@ test("completarPerfil rellena lo que falte sin pisar lo guardado", () => {
   assert.equal(p.calendarios.moodle, "");
   assert.equal(p.minSleepHours, 4);
 });
+test("horario del gym: L-V 6:30-22, sábado 7-14, domingo 8-14; se añade a un perfil guardado sin horario", () => {
+  const esperado = [0, 1, 2, 3, 4].map(d => ({ diaSemana: d, inicio: 390, fin: 1320 })).concat([{ diaSemana: 5, inicio: 420, fin: 840 }, { diaSemana: 6, inicio: 480, fin: 840 }]);
+  assert.deepEqual(perfilPorDefecto().objetivos.find(o => o.id === "gym").horario, esperado);
+  const guardado = completarPerfil({ objetivos: [{ id: "gym", titulo: "Gym", tipo: "gym", vecesSemana: 4, minutos: 75, sitioId: "gym" }] });
+  const g = guardado.objetivos.find(o => o.id === "gym");
+  assert.deepEqual([g.vecesSemana, g.horario], [4, esperado]);
+  assert.deepEqual(completarPerfil({ objetivos: [{ id: "gym", tipo: "gym", horario: [] }] }).objetivos[0].horario, []);
+});
