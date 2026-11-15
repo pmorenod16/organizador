@@ -109,7 +109,7 @@ async function entrada(req, body, env, { json, fetchFn }) {
 Contexto (JSON): ${JSON.stringify(contexto)}
 Mensaje: «${texto}»`;
   try {
-    const res = await llamarGemini({ apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MODEL || "gemini-3.5-flash,gemini-3.5-flash-lite,gemini-flash-lite-latest", sistema: SISTEMA, texto: mensaje, esquema: ESQUEMA, fetchFn });
+    const res = await llamarGemini({ apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MODEL || "gemini-3-flash-preview,gemini-3.5-flash,gemini-3.5-flash-lite", sistema: SISTEMA, texto: mensaje, esquema: ESQUEMA, fetchFn });
     if (!Array.isArray(res?.acciones)) return json({ error: "La IA no ha devuelto acciones." }, 502);
     return json({ acciones: res.acciones });
   } catch (e) {
