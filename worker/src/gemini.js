@@ -4,18 +4,25 @@
 const DIAS = "0=lunes, 1=martes, 2=miércoles, 3=jueves, 4=viernes, 5=sábado, 6=domingo";
 
 const SISTEMA = `Eres el organizador del día de un estudiante de ingeniería de la UdG que también trabaja.
-Convierte lo que escribe o dice en acciones JSON. Responde SOLO con {"acciones":[...]}.
+Convierte lo que escribe o dice en acciones JSON: {"acciones":[...]}. Cada dato va en SU campo; "titulo" es corto (máximo 6 palabras) y nunca lleva fechas, horas ni explicaciones.
 Tipos de acción:
-- "tarea": algo que hay que hacer. Campos: titulo, tipoTarea ("entrega"|"examen"|"estudio"|"otro"), fechaLimite ("YYYY-MM-DD" o vacío), pasos: lista de pasos CONCRETOS y pequeños, en orden, cada uno con titulo y minutos estimados (entre 10 y 90). Un paso dice exactamente qué hacer ("Leer apuntes del tema 3, apartado Thévenin", no "Estudiar").
-- "evento": algo con hora fija (entreno, partido, examen, entrega con hora). Campos: titulo, tipoEvento ("entreno"|"partido"|"entrega"|"examen"|"clase"|"practica"|"otro"), fecha, inicio y fin "HH:MM", diasSemana si se repite (${DIAS}).
-- "retraso": algo ha durado más de lo previsto o vas tarde. Campo: minutos.
-- "no-ir": no va a ir a un bloque del plan. Campo: refId (de los bloques del contexto).
+- "tarea": algo que hay que hacer. Campos: titulo, tipoTarea ("entrega"|"examen"|"estudio"|"otro"), fechaLimite ("YYYY-MM-DD" o ""), pasos: lista de 3 a 8 pasos CONCRETOS y pequeños, en orden, cada uno con titulo (una acción clara: "Leer apuntes del tema 3, apartado Thévenin") y minutos (entre 10 y 90).
+- "evento": algo con hora fija (quedar con alguien, entreno, partido, examen…). Campos: titulo, tipoEvento ("entreno"|"partido"|"examen"|"clase"|"practica"|"otro"), fecha ("YYYY-MM-DD"), inicio y fin ("HH:MM"; si no dice cuándo acaba, pon 1 hora), diasSemana solo si se repite (${DIAS}).
+- "retraso": algo ha durado más de lo previsto o va tarde. Campo: minutos.
+- "no-ir": no va a ir a un bloque del plan o a un objetivo (p. ej. los abuelos) hoy. Campo: refId (de "bloques" u "objetivos" del contexto).
 - "hecho": ha terminado una tarea o un paso. Campo: refId.
 - "aplazar": mover una tarea a otro día. Campos: refId, fecha.
-- "trabajo-horario": SOLO si dice explícitamente que le han cambiado el horario fijo del trabajo (todas las semanas). Campos: diaSemana (${DIAS}), inicio, fin.
-- "trabajo-dia": SOLO si dice explícitamente que un día concreto no trabaja o trabaja en otro horario. Campos: fecha; inicio y fin si trabaja (vacíos = no trabaja ese día).
-- Una entrega con fecha es una "tarea" (tipoTarea "entrega", fechaLimite) con sus pasos, no un "evento".
-Reglas: no inventes fechas ni horas que no se deduzcan del mensaje; las fechas relativas ("el viernes", "mañana") se calculan desde la fecha de hoy. Usa solo refId que aparezcan en el contexto. Si el mensaje no pide nada, devuelve {"acciones":[]}.`;
+- "trabajo-horario": SOLO si dice que le han cambiado el horario fijo del trabajo (todas las semanas). Campos: diaSemana (${DIAS}), inicio, fin.
+- "trabajo-dia": SOLO si dice que un día concreto no trabaja o trabaja en otro horario. Campos: fecha; inicio y fin si trabaja (vacíos = no trabaja).
+Una entrega con fecha es una "tarea" (tipoTarea "entrega", fechaLimite) con sus pasos, no un "evento".
+Las fechas relativas ("hoy", "mañana", "el viernes") se calculan desde la fecha de hoy que se te da. No inventes nada que no se deduzca del mensaje. Usa solo refId del contexto. Si el mensaje no pide nada, {"acciones":[]}.
+
+Ejemplos (hoy es domingo 2026-11-15):
+«hoy de 18 a 20 he quedado con mi hermana para lo de su boda» →
+{"acciones":[{"tipo":"evento","titulo":"Boda: quedar con mi hermana","tipoEvento":"otro","fecha":"2026-11-15","inicio":"18:00","fin":"20:00"}]}
+«tengo que entregar la pràctica 2 de Teoria de Circuits el viernes» →
+{"acciones":[{"tipo":"tarea","titulo":"Pràctica 2 Teoria de Circuits","tipoTarea":"entrega","fechaLimite":"2026-11-20","pasos":[{"titulo":"Leer el enunciado y apuntar qué piden","minutos":15},{"titulo":"Repasar la teoría necesaria en los apuntes","minutos":45},{"titulo":"Hacer los cálculos y simulaciones","minutos":90},{"titulo":"Redactar el informe con los resultados","minutos":60},{"titulo":"Revisar y subir al Moodle","minutos":15}]}]}
+«la clase ha acabado 20 minutos tarde» → {"acciones":[{"tipo":"retraso","minutos":20}]}`;
 
 const ESQUEMA = {
   type: "OBJECT",
@@ -26,13 +33,13 @@ const ESQUEMA = {
         type: "OBJECT",
         properties: {
           tipo: { type: "STRING", enum: ["tarea", "evento", "retraso", "no-ir", "hecho", "aplazar", "trabajo-horario", "trabajo-dia"] },
-          titulo: { type: "STRING" },
+          titulo: { type: "STRING", description: "Corto, máximo 6 palabras. Sin fechas, horas ni explicaciones." },
           tipoTarea: { type: "STRING", enum: ["entrega", "examen", "estudio", "otro"] },
           tipoEvento: { type: "STRING", enum: ["entreno", "partido", "entrega", "examen", "clase", "practica", "otro"] },
-          fechaLimite: { type: "STRING" },
-          fecha: { type: "STRING" },
-          inicio: { type: "STRING" },
-          fin: { type: "STRING" },
+          fechaLimite: { type: "STRING", description: "YYYY-MM-DD o vacío" },
+          fecha: { type: "STRING", description: "YYYY-MM-DD" },
+          inicio: { type: "STRING", description: "HH:MM" },
+          fin: { type: "STRING", description: "HH:MM" },
           diasSemana: { type: "ARRAY", items: { type: "INTEGER" } },
           diaSemana: { type: "INTEGER" },
           minutos: { type: "INTEGER" },
