@@ -37,3 +37,15 @@ test("Gemini con límite agotado (429) → 503 con mensaje claro", async () => {
   expect(r.status).toBe(503);
   expect((await r.json()).error).toMatch(/límite/);
 });
+
+test("si el primer modelo falla (503) o tarda, prueba el siguiente", async () => {
+  const usados = [];
+  const app = crearApp({ verificar: async () => true, rutas: rutasIA, fetchFn: async url => {
+    const m = url.match(/models\/([^:]+):/)[1]; usados.push(m);
+    return m === "a" ? new Response("{}", { status: 503 }) : gemini('{"acciones":[]}')();
+  } });
+  const r = await app.fetch(new Request("https://w/ia/entrada", { method: "POST", headers: { Authorization: "Bearer x" },
+    body: JSON.stringify({ texto: "hola", fecha: "2026-11-16", ahora: 0, contexto: {} }) }), { ...env, GEMINI_MODEL: "a,b" });
+  expect(r.status).toBe(200);
+  expect(usados).toEqual(["a", "b"]);
+});

@@ -1,6 +1,6 @@
 // Vista del día: «Ahora toca», hora de levantarse, avisos, propuestas y la línea del día.
-import { hhmm } from "../tiempo.js?v=202611150759";
-import { huecosLibres } from "./libre.js?v=202611150759";
+import { hhmm } from "../tiempo.js?v=202611150820";
+import { huecosLibres } from "./libre.js?v=202611150820";
 
 export const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const DIAS = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];

@@ -4,7 +4,7 @@
 // Reglas (spec §4): el trabajo y las prácticas no se tocan; prioridad estudios → entrenos/partidos
 // → gym y objetivos; si una entrega urgente no cabe se recorta, en este orden, objetivos → descanso
 // → sueño (hasta minSleepHours). Entrenos/partidos y clases solo se proponen saltar, nunca se quitan.
-import { diaSemana } from "./tiempo.js?v=202611150759";
+import { diaSemana } from "./tiempo.js?v=202611150820";
 
 const MAX_BLOQUE = 90;
 const MIN_TROZO = 30;

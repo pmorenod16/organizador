@@ -50,10 +50,25 @@ export class ErrorIA extends Error {
   constructor(mensaje, status) { super(mensaje); this.status = status; }
 }
 
-/** Llama a Gemini y devuelve el JSON que genera. */
-export async function llamarGemini({ apiKey, model, sistema, texto, esquema, fetchFn }) {
+const ESPERA_MAX = 20000;
+
+/** Prueba los modelos en orden (GEMINI_MODEL = "a,b,c"): si uno falla o tarda más de 20 s, el siguiente. */
+export async function llamarGemini({ apiKey, model, ...resto }) {
+  const modelos = String(model || "gemini-3.5-flash").split(",").map(m => m.trim()).filter(Boolean);
+  let ultimo;
+  for (const m of modelos) {
+    try { return await llamarModelo({ apiKey, model: m, ...resto }); }
+    catch (e) { ultimo = e; if (e.status === 400) break; }
+  }
+  throw ultimo;
+}
+
+async function llamarModelo({ apiKey, model, sistema, texto, esquema, fetchFn }) {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ESPERA_MAX);
   const r = await fetchFn(url, {
+    signal: ctrl.signal,
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -61,7 +76,8 @@ export async function llamarGemini({ apiKey, model, sistema, texto, esquema, fet
       contents: [{ role: "user", parts: [{ text: texto }] }],
       generationConfig: { responseMimeType: "application/json", responseSchema: esquema, temperature: 0.2 },
     }),
-  });
+  }).catch(e => { throw new ErrorIA(e.name === "AbortError" ? "La IA está tardando demasiado." : "No se ha podido contactar con la IA.", 504); })
+    .finally(() => clearTimeout(t));
   if (r.status === 429) throw new ErrorIA("Se ha agotado el límite gratuito de Gemini por ahora. Prueba en un minuto.", 503);
   if (!r.ok) throw new ErrorIA(`Gemini ha respondido ${r.status}`, 502);
   const datos = await r.json().catch(() => null);
@@ -84,7 +100,7 @@ async function entrada(req, body, env, { json, fetchFn }) {
 Contexto (JSON): ${JSON.stringify(contexto)}
 Mensaje: «${texto}»`;
   try {
-    const res = await llamarGemini({ apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MODEL || "gemini-flash-latest", sistema: SISTEMA, texto: mensaje, esquema: ESQUEMA, fetchFn });
+    const res = await llamarGemini({ apiKey: env.GEMINI_API_KEY, model: env.GEMINI_MODEL || "gemini-3.5-flash,gemini-3.5-flash-lite,gemini-flash-lite-latest", sistema: SISTEMA, texto: mensaje, esquema: ESQUEMA, fetchFn });
     if (!Array.isArray(res?.acciones)) return json({ error: "La IA no ha devuelto acciones." }, 502);
     return json({ acciones: res.acciones });
   } catch (e) {

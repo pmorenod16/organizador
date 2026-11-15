@@ -1,18 +1,18 @@
 // Arranque: login, carga de datos, plan del día y entrada por texto/voz.
-import { firebaseConfig, OWNER_UID } from "../config.js?v=202611150759";
-import * as store from "./store.js?v=202611150759";
-import * as ia from "./ia.js?v=202611150759";
-import { planDay } from "./planificador.js?v=202611150759";
-import { montarDia, combinarTareas } from "./montar.js?v=202611150759";
-import { entregas } from "./clasificar.js?v=202611150759";
-import { validar, describir, aplicar } from "./acciones.js?v=202611150759";
-import { completarPerfil, urlsCalendario } from "./perfil.js?v=202611150759";
-import { fechaLocal, sumarDias, aMinutos, diaSemana, hhmm } from "./tiempo.js?v=202611150759";
-import { pintarDia, esc } from "./vistas/dia.js?v=202611150759";
-import { pintarConfiguracion } from "./vistas/configuracion.js?v=202611150759";
-import { esNativo, programarAvisos, ponerAlarma, escucharVoz } from "./nativo.js?v=202611150759";
+import { firebaseConfig, OWNER_UID } from "../config.js?v=202611150820";
+import * as store from "./store.js?v=202611150820";
+import * as ia from "./ia.js?v=202611150820";
+import { planDay } from "./planificador.js?v=202611150820";
+import { montarDia, combinarTareas } from "./montar.js?v=202611150820";
+import { entregas } from "./clasificar.js?v=202611150820";
+import { validar, describir, aplicar } from "./acciones.js?v=202611150820";
+import { completarPerfil, urlsCalendario } from "./perfil.js?v=202611150820";
+import { fechaLocal, sumarDias, aMinutos, diaSemana, hhmm } from "./tiempo.js?v=202611150820";
+import { pintarDia, esc } from "./vistas/dia.js?v=202611150820";
+import { pintarConfiguracion } from "./vistas/configuracion.js?v=202611150820";
+import { esNativo, programarAvisos, ponerAlarma, escucharVoz } from "./nativo.js?v=202611150820";
 
-export const APP_VERSION = "202611150759";
+export const APP_VERSION = "202611150820";
 
 const $ = s => document.querySelector(s);
 const PANTALLAS = ["carga", "login", "sinAcceso", "app"];
@@ -75,7 +75,7 @@ catch { db = F.getFirestore(app); }
 
 let _core;
 const pluginAuth = async () => {
-  const reg = typeof window.Capacitor?.registerPlugin === "function" ? window.Capacitor.registerPlugin : (_core ||= await import("../capacitor-core.js?v=202611150759")).registerPlugin;
+  const reg = typeof window.Capacitor?.registerPlugin === "function" ? window.Capacitor.registerPlugin : (_core ||= await import("../capacitor-core.js?v=202611150820")).registerPlugin;
   return { p: reg("FirebaseAuthentication") };
 };
 $("#btnGoogle").onclick = async () => {

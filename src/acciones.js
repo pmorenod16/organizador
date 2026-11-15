@@ -1,6 +1,6 @@
 // Acciones que propone la IA a partir de lo que escribes o dices.
 // Nada se aplica sin confirmar: validar() → describir() en la tarjeta → aplicar() al pulsar «Aplicar».
-import { hhmm } from "./tiempo.js?v=202611150759";
+import { hhmm } from "./tiempo.js?v=202611150820";
 
 const TIPOS = new Set(["tarea", "evento", "retraso", "no-ir", "hecho", "aplazar", "trabajo-horario", "trabajo-dia"]);
 const TIPOS_TAREA = new Set(["entrega", "examen", "estudio", "otro"]);

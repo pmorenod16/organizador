@@ -1,20 +1,26 @@
 // Llamadas al Worker (calendarios e IA). El token de Firebase demuestra que eres tú.
-import { WORKER_URL } from "../config.js?v=202611150759";
-import { expandir } from "./ical.js?v=202611150759";
+import { WORKER_URL } from "../config.js?v=202611150820";
+import { expandir } from "./ical.js?v=202611150820";
 
 let obtenerToken = async () => "";
 export const usarToken = fn => { obtenerToken = fn; };
 
 async function post(ruta, body) {
   let r;
+  // nunca se queda esperando para siempre: 60 s como mucho
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 60000);
   try {
     r = await fetch(WORKER_URL.replace(/\/$/, "") + ruta, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${await obtenerToken()}` },
       body: JSON.stringify(body),
+      signal: ctrl.signal,
     });
-  } catch {
-    throw new Error("Sin conexión con el servidor. ¿Tienes internet?");
+  } catch (e) {
+    throw new Error(e?.name === "AbortError" ? "El servidor está tardando demasiado. Prueba otra vez en un momento." : "Sin conexión con el servidor. ¿Tienes internet?");
+  } finally {
+    clearTimeout(t);
   }
   const datos = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(datos.error || `Error ${r.status}`);
