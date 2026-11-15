@@ -7,7 +7,7 @@ const casos = [
   { texto: "tengo que entregar la pràctica 2 de Teoria de Circuits el viernes", fecha: "2026-11-15", ahora: 556, contexto: { asignaturas: ["Teoria de Circuits"] } },
   { texto: "hoy no voy a ver a los abuelos", fecha: "2026-11-15", ahora: 556, contexto: { objetivos: [{ refId: "abuelos", titulo: "Ver a los abuelos" }] } },
 ];
-for (const m of ["gemini-3.5-flash", "gemini-3.5-flash-lite", "gemini-3-flash-preview", "gemini-flash-lite-latest"]) {
+for (const m of ["gemini-3.5-flash", "gemini-3-flash-preview", "gemini-3.5-flash-lite"]) {
   for (const c of casos) {
     const t0 = Date.now();
     const r = await G.rutasIA["/ia/entrada"](null, c, { ...env, GEMINI_MODEL: m }, { json, fetchFn: fetch });

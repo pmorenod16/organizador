@@ -81,7 +81,9 @@ async function llamarModelo({ apiKey, model, sistema, texto, esquema, fetchFn })
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: sistema }] },
       contents: [{ role: "user", parts: [{ text: texto }] }],
-      generationConfig: { responseMimeType: "application/json", responseSchema: esquema, temperature: 0.2 },
+      // sin responseSchema: con él, los modelos rellenan solo el primer campo y meten todo en el título
+      // (comprobado el 15/11/2026). Las instrucciones con ejemplos dan JSON correcto; la app lo valida.
+      generationConfig: { responseMimeType: "application/json", temperature: 0.2 },
     }),
   }).catch(e => { throw new ErrorIA(e.name === "AbortError" ? "La IA está tardando demasiado." : "No se ha podido contactar con la IA.", 504); })
     .finally(() => clearTimeout(t));
