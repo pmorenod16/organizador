@@ -23,7 +23,7 @@ export function enfoque(ui) {
   const sigPaso = pasos.find(x => !x.hecha);
   const parado = e.estado === "parado";
   return `<div class="enfoque modo-${e.modo} ${ui.pantallaCompleta ? "completa" : ""}">
-    <header class="vista-cab"><a class="icono atras" href="#/explorar" aria-label="Atrás">${icono("atras")}</a><div class="tit"><h1>Enfoque</h1></div>
+    <header class="vista-cab"><div class="tit"><h1>Enfoque</h1></div>
       <div class="seg" role="tablist">${[["pomodoro", "Pomodoro"], ["crono", "Cronómetro"]].map(([k, n]) => `<button data-tipo="${k}" class="${e.tipo === k ? "on" : ""}" ${parado ? "" : "disabled"}>${n}</button>`).join("")}</div>
     </header>
     ${e.tipo === "pomodoro" ? `<div class="seg modos">${Object.entries(P.NOMBRES).map(([k, n]) => `<button data-modo="${k}" class="${e.modo === k ? "on" : ""}" ${parado ? "" : "disabled"}>${n}</button>`).join("")}</div>` : ""}

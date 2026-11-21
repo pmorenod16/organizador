@@ -11,6 +11,7 @@ import { seccionesDe } from "./selectores.js";
 export const cab = (titulo, { sub = "", atras = "", acciones = "" } = {}) =>
   `<header class="vista-cab">${atras ? `<a class="icono atras" href="${atras}" aria-label="Atrás">${icono("atras")}</a>` : ""}<div class="tit"><h1>${titulo}</h1>${sub ? `<p class="suave">${sub}</p>` : ""}</div><div class="acc-cab">${acciones}</div></header>`;
 const botonMenu = (dato, etiqueta = "Opciones de la vista") => `<button class="icono" ${dato} aria-label="${etiqueta}">${icono("puntos")}</button>`;
+const botonBuscar = `<a class="icono solo-movil" href="#/buscar" aria-label="Buscar">${icono("buscar")}</a>`;
 const diaTitulo = f => { const [, m, d] = f.split("-").map(Number); return `${d} ${MESES[m - 1].slice(0, 3)} · ${DIAS[diaSemana(f)]}`; };
 
 // ---------------- Hoy ----------------
@@ -20,7 +21,7 @@ export function hoy() {
   const l = deVista("hoy", S.tareas, h);
   const tarde = l.filter(t => t.fecha < h), deHoy = l.filter(t => t.fecha === h);
   const hechasHoy = S.tareas.filter(t => t.hecha && t.hechaEn && new Date(t.hechaEn).toDateString() === new Date().toDateString() && !t.padreId).length;
-  return cab("Hoy", { sub: l.length ? `${icono("hecho")} ${l.length} ${l.length === 1 ? "tarea" : "tareas"}` : "", acciones: botonMenu("data-menu-vista") }) +
+  return cab("Hoy", { sub: l.length ? `${icono("hecho")} ${l.length} ${l.length === 1 ? "tarea" : "tareas"}` : "", acciones: botonBuscar + botonMenu("data-menu-vista") }) +
     (tarde.length ? `<h2 class="grupo tarde-t">Vencidas <span>${tarde.length}</span><button class="enlace" data-reprogramar="hoy">Reprogramar</button></h2><ul class="lista">${filas(tarde)}</ul>` : "") +
     `<h2 class="grupo">${esc(diaTitulo(h))} · Hoy</h2>` + evs(h) +
     (deHoy.length ? `<ul class="lista">${filas(deHoy, { fecha: false })}</ul>` : "") + filaAnadir({ fecha: h }) +
@@ -30,7 +31,7 @@ export function hoy() {
 // ---------------- Bandeja ----------------
 export function bandeja() {
   const l = deVista("bandeja", S.tareas, hoyISO());
-  return cab("Bandeja de entrada", { acciones: botonMenu("data-menu-vista") }) +
+  return cab("Bandeja de entrada", { atras: "#/explorar", acciones: botonMenu("data-menu-vista") }) +
     (l.length ? `<ul class="lista">${filas(l, { proyecto: false })}</ul>` : "") + filaAnadir({}) +
     (!l.length ? vacio("Tu bandeja está vacía", "Lo que apuntes sin proyecto llega aquí. Luego muévelo a su asignatura.") : "");
 }
@@ -50,7 +51,7 @@ export function proximos(ui) {
   const desde = inicio < h ? h : inicio;
   const listaDias = Array.from({ length: 14 }, (_, i) => sumarDias(desde, i));
   const tarde = porDia.get("vencidas") || [];
-  return cab("Próximo", { acciones: selector }) +
+  return cab("Próximo", { acciones: selector + botonBuscar }) +
     `<div class="semana-nav"><b>${MESES[m - 1].replace(/^./, c => c.toUpperCase())} ${a}</b><span class="sep"></span>
       <button class="icono" data-semana="-1" ${inicio <= lunesDe(h) ? "disabled" : ""} aria-label="Semana anterior">‹</button>
       <button class="btn peque" data-semana="0">Hoy</button>
@@ -146,16 +147,19 @@ export function explorar() {
   const n = id => deVista("proyecto", S.tareas, hoyISO(), { proyectoId: id }).length;
   const it = (href, ico, nombre, extra = "", color = "") => `<a href="${href}"><span style="${color ? "color:" + color : ""}">${icono(ico)}</span><span>${nombre}</span>${extra ? `<small>${extra}</small>` : ""}</a>`;
   const activos = S.proyectos.filter(p => !p.archivado), archivados = S.proyectos.filter(p => p.archivado);
-  return cab("Explorar", { acciones: `<a class="icono" href="#/ajustes" aria-label="Ajustes">${icono("ajustes")}</a>` }) +
+  return cab("Proyectos", { acciones: botonBuscar + `<a class="icono" href="#/ajustes" aria-label="Ajustes">${icono("ajustes")}</a>` }) +
     `<nav class="lista-nav tarjeta">
-      ${it("#/enfoque", "tomate", "Enfoque (Pomodoro)", "", "var(--acento)")}
-      ${it("#/estadisticas", "grafica", "Estadísticas", "", "var(--p3)")}
-      ${it("#/hechas", "hecho", "Completadas", "", "var(--verde)")}
-      ${it("#/proximos/calendario", "proximo", "Calendario", "", "var(--morado)")}
-      ${it("#/ajustes/calendarios", "cal", "Google Calendar", Cal.lista().length ? `${Cal.lista().length} conectado${Cal.lista().length > 1 ? "s" : ""}` : "Conectar", "var(--p3)")}
+      ${it("#/bandeja", "bandeja", "Bandeja de entrada", deVista("bandeja", S.tareas, hoyISO()).length || "", "var(--p3)")}
     </nav>
     <h2 class="grupo">Mis proyectos <button class="icono peque" data-nuevo-proyecto aria-label="Añadir proyecto">${icono("mas")}</button></h2>
     <nav class="lista-nav tarjeta">${activos.map(p => it(`#/proyecto/${esc(p.id)}`, "almohadilla", esc(p.nombre), n(p.id) || "", p.color)).join("") || `<p class="suave peque relleno">Crea un proyecto por asignatura con el + o importa tus CSV de Todoist.</p>`}
       <button class="fila-anadir dentro" data-importar-abrir><span>${icono("importar")}</span>Importar CSV de Todoist</button></nav>
+    <h2 class="grupo">Más</h2>
+    <nav class="lista-nav tarjeta">
+      ${it("#/estadisticas", "grafica", "Estadísticas", "", "var(--p3)")}
+      ${it("#/hechas", "hecho", "Completadas", "", "var(--verde)")}
+      ${it("#/ajustes/calendarios", "cal", "Google Calendar", Cal.lista().length ? `${Cal.lista().length} conectado${Cal.lista().length > 1 ? "s" : ""}` : "Conectar", "var(--p3)")}
+      ${it("#/ajustes", "ajustes", "Ajustes", "", "var(--suave)")}
+    </nav>
     ${archivados.length ? `<h2 class="grupo suave">Archivados</h2><nav class="lista-nav tarjeta">${archivados.map(p => it(`#/proyecto/${esc(p.id)}`, "almohadilla", esc(p.nombre), "", "var(--suave)")).join("")}</nav>` : ""}`;
 }

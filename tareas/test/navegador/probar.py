@@ -38,7 +38,7 @@ async def main():
                 await pg.keyboard.press("Escape"); await pg.wait_for_timeout(250)
                 # añadir con los chips
                 await pg.goto("http://localhost:9/tareas/#/hoy"); await pg.wait_for_timeout(300)
-                await pg.click("#btnAnadir"); await pg.wait_for_timeout(250)
+                await pg.click("[data-anadir-abajo]"); await pg.wait_for_timeout(250)
                 await pg.fill(".rapido textarea[name=t]", "Repasar errores mañana 18:00 p2")
                 await pg.dispatch_event(".rapido textarea[name=t]", "input"); await pg.wait_for_timeout(150)
                 await foto("rapido")

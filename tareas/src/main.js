@@ -182,7 +182,7 @@ function htmlDe(ruta, arg) {
 // ---------- deslizar entre pestañas (móvil) ----------
 // Como en el Armario: al arrastrar de lado se pinta la pestaña vecina pegada al borde y las dos siguen al dedo.
 // Al soltar, si has pasado un cuarto de pantalla o lo has lanzado rápido, entra la vecina; si no, vuelven.
-const ORDEN = ["bandeja", "hoy", "proximos", "buscar", "explorar"];
+const ORDEN = ["hoy", "proximos", "enfoque", "explorar"];
 const EASE = "cubic-bezier(.22,.8,.25,1)";
 let sw = null, peek = null;
 const vista = () => $("#vista");
@@ -259,18 +259,21 @@ document.addEventListener("touchcancel", finDeslizar, { passive: true });
 /** El fondo de la pestaña activa de la barra de abajo se desliza a su sitio (o sigue al dedo) */
 function moverIndicador(pos, animar = false) {
   const ind = $("#abajo .indicador"); if (!ind) return;
-  const as = $$("#abajo a"); if (!as.length) return;
-  const w = as[0].offsetWidth;
-  ind.style.width = w + "px";
+  const as = $$("#abajo a[data-pes]"); if (!as.length) return;
+  // entre dos pestañas (al deslizar) se interpola la posición; el botón + del centro se salta
+  const p = Math.max(0, Math.min(as.length - 1, pos)), i = Math.floor(p), f = p - i;
+  const a = as[i], b = as[Math.min(as.length - 1, i + 1)];
+  ind.style.width = a.offsetWidth + "px";
   ind.style.transition = animar ? "" : "none";
-  ind.style.transform = `translateX(${Math.max(0, Math.min(as.length - 1, pos)) * w}px)`;
+  ind.style.transform = `translateX(${a.offsetLeft + (b.offsetLeft - a.offsetLeft) * f - 6}px)`;
   ind.style.opacity = pos < 0 ? "0" : "1";
 }
 
 addEventListener("resize", () => moverIndicador(PESTANAS.findIndex(([r]) => r === pestanaDe(UI.ruta))));
 function contar(vista, extra) { return deVista(vista, S.tareas, hoyISO(), extra).length; }
-const PESTANAS = [["bandeja", "Bandeja", "bandeja"], ["hoy", "Hoy", "hoy"], ["proximos", "Próximo", "proximo"], ["buscar", "Buscar", "buscar"], ["explorar", "Explorar", "explorar"]];
-const pestanaDe = r => (["proyecto", "enfoque", "estadisticas", "hechas", "ajustes"].includes(r) ? "explorar" : r);
+// Barra de abajo: lo que más se usa al estudiar, y el + en el centro, al alcance del pulgar
+const PESTANAS = [["hoy", "Hoy", "hoy"], ["proximos", "Próximo", "proximo"], ["enfoque", "Enfoque", "tomate"], ["explorar", "Proyectos", "almohadilla"]];
+const pestanaDe = r => (["proyecto", "estadisticas", "hechas", "ajustes", "bandeja"].includes(r) ? "explorar" : r === "buscar" ? null : r);
 function pintarMenu() {
   const actual = UI.ruta === "proyecto" ? "proyecto/" + UI.arg : UI.ruta;
   const it = (ruta, nombre, ico, n, color = "") => `<a href="#/${ruta}" class="${actual === ruta ? "on" : ""}"><span class="ico-m" style="${color ? "color:" + color : ""}">${icono(ico)}</span><span>${nombre}</span>${n ? `<small>${n}</small>` : ""}</a>`;
@@ -294,15 +297,25 @@ function pintarMenu() {
     <nav class="pie-menu">${it("ajustes", "Ajustes", "ajustes")}</nav>`;
   const pes = pestanaDe(UI.ruta);
   const abajo = $("#abajo");
-  if (!abajo.querySelector(".indicador")) abajo.innerHTML = `<span class="indicador"></span>` + PESTANAS.map(([r, n, i]) => `<a href="#/${r}" data-pes="${r}">${icono(i)}<span>${n}</span><i class="globo" hidden></i></a>`).join("");
+  const pestana = ([r, n, i]) => `<a href="#/${r}" data-pes="${r}">${icono(i)}<span>${n}</span><i class="globo" hidden></i></a>`;
+  if (!abajo.querySelector(".indicador")) abajo.innerHTML = `<span class="indicador"></span>` + PESTANAS.slice(0, 2).map(pestana).join("") +
+    `<button class="anadir-abajo" data-anadir-abajo aria-label="Añadir tarea">${icono("mas")}</button>` + PESTANAS.slice(2).map(pestana).join("");
   for (const a of abajo.querySelectorAll("a")) {
     a.classList.toggle("on", a.dataset.pes === pes);
     const g = a.querySelector(".globo");
     if (a.dataset.pes === "hoy") { g.hidden = !nHoy; g.textContent = nHoy; g.classList.toggle("rojo", !!tarde); }
   }
+  pintarPestanaFoco();
   requestAnimationFrame(() => moverIndicador(PESTANAS.findIndex(([r]) => r === pes), true));
 }
 
+/** Con un pomodoro en marcha, la pestaña Enfoque enseña el tiempo que queda */
+function pintarPestanaFoco() {
+  const a = $('#abajo a[data-pes="enfoque"]'); if (!a) return;
+  const e = P.estado(), activo = e.estado !== "parado";
+  a.classList.toggle("en-marcha", activo);
+  a.querySelector("span").textContent = activo ? P.formato(P.tiempo()) : "Enfoque";
+}
 function pintarMiniFoco() {
   const e = P.estado(), el = $("#miniFoco");
   if (e.estado === "parado" || UI.ruta === "enfoque") { el.hidden = true; return; }
@@ -320,6 +333,7 @@ function contextoAnadir() {
   return {};
 }
 $("#btnAnadir").onclick = () => anadir(contextoAnadir());
+$("#abajo").addEventListener("click", e => { if (e.target.closest("[data-anadir-abajo]")) anadir(contextoAnadir()); });
 let destinoImportar = null;
 const abrirImportar = (destino = null) => { destinoImportar = destino; $("#archivoImportar").click(); };
 $("#archivoImportar").onchange = e => { const x = e.target; if (x.files.length) A.importar([...x.files], destinoImportar); x.value = ""; };
@@ -342,6 +356,7 @@ setInterval(() => {
   if (r && UI.ruta !== "enfoque") toast(r.eraFoco ? "¡Pomodoro terminado! Toca descansar." : "Se acabó el descanso", { ms: 6000 });
   if (UI.ruta === "enfoque") tic($("#vista"));
   const m = $("[data-mini]"); if (m) m.textContent = P.formato(P.tiempo());
+  pintarPestanaFoco();
 }, 500);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { P.comprobar(); if (S.listo) { pintar(); Cal.recargar(); } } });
 document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && UI.pantallaCompleta) { UI.pantallaCompleta = false; pintar(); } });
