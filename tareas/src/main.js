@@ -166,7 +166,7 @@ function pintar() {
   sinEntrada = false;
   $("#btnAnadir").hidden = ["enfoque", "estadisticas", "ajustes", "hechas"].includes(UI.ruta);
   if (UI.ruta === "buscar") { const i = $("[data-buscar]", v); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
-  if (UI.ruta === "enfoque") tic(v);
+  if (UI.ruta === "enfoque") { tic(v); const m = $(".metodos .on", v); if (m) m.parentElement.scrollLeft = m.offsetLeft - (m.parentElement.clientWidth - m.offsetWidth) / 2; }
   if (UI.ruta === "ajustes" && UI.arg && !v.dataset.saltado) { v.dataset.saltado = "1"; setTimeout(() => document.getElementById(UI.arg)?.scrollIntoView({ block: "start" }), 50); }
   if (UI.ruta !== "ajustes") delete v.dataset.saltado;
   pintarMenu();
@@ -365,15 +365,17 @@ document.addEventListener("keydown", e => {
 function estudiar(id) {
   const t = S.tareas.find(x => x.id === id); if (!t) return;
   const ses = t.fecha ? Cal.enlacesDia(t.fecha).porTarea.get(id) : null;
-  if (ses) {
-    const ciclo = (Number(S.ajustes.foco) || 25) + (Number(S.ajustes.corto) || 5);
+  const M = P.metodo();
+  if (ses && M.foco && !M.sinDescanso) {
+    const ciclo = M.foco() + M.descanso();
     const n = Math.max(1, Math.round(minutosEntre(ses.ini, ses.fin) / ciclo));
     if (!t.pomosEstimados) D.cambiarTarea(id, { pomosEstimados: (t.pomos || 0) + n });
     UI.sesion = { tareaId: id, ini: ses.ini, fin: ses.fin, titulo: ses.titulo, pomos: n };
-  } else UI.sesion = { tareaId: id, fin: null, titulo: null, pomos: t.pomosEstimados ? Math.max(1, t.pomosEstimados - (t.pomos || 0)) : null };
+  } else if (ses) UI.sesion = { tareaId: id, ini: ses.ini, fin: ses.fin, titulo: ses.titulo, pomos: null };
+  else UI.sesion = { tareaId: id, fin: null, titulo: null, pomos: t.pomosEstimados ? Math.max(1, t.pomosEstimados - (t.pomos || 0)) : null };
   guardarUI();
   if (P.estado().estado !== "parado") P.parar();
-  P.elegirTipo("pomodoro"); P.elegirModo("foco"); P.empezar(id);
+  P.elegirModo("foco"); P.empezar(id); // con el método que tengas elegido en Enfoque
   location.hash = "#/enfoque";
 }
 function alFoco(id) {
@@ -385,7 +387,7 @@ const FICHA = { alFoco, alEstudiar: estudiar };
 P.suscribir(() => { if (S.listo) { if (UI.ruta === "enfoque") pintar(); else pintarMiniFoco(); } });
 setInterval(() => {
   const r = P.comprobar();
-  if (r && UI.ruta !== "enfoque") toast(r.eraFoco ? "¡Pomodoro terminado! Toca descansar." : "Se acabó el descanso", { ms: 6000 });
+  if (r && UI.ruta !== "enfoque") toast(r.texto, { ms: 6000 });
   if (UI.ruta === "enfoque") tic($("#vista"));
   const m = $("[data-mini]"); if (m) m.textContent = P.formato(P.tiempo());
   pintarPestanaFoco();
@@ -397,8 +399,20 @@ $("#miniFoco").addEventListener("click", e => { const b = e.target.closest("[dat
 function elegirTarea() {
   const el = hoja(`<div data-elegir>${elegirTareaHtml()}</div>`);
   const cont = $("[data-elegir]", el);
-  cont.addEventListener("input", e => { if (e.target.dataset.q !== undefined) { const q = e.target.value; cont.innerHTML = elegirTareaHtml(q); const i = $("[data-q]", cont); i.focus(); i.setSelectionRange(q.length, q.length); } });
-  cont.addEventListener("click", e => { const b = e.target.closest("[data-tarea]"); if (b) { P.elegirTarea(b.dataset.tarea); el.cerrar(); } });
+  let libre = P.estado().tareaId ? null : P.estado().proyectoId;
+  cont.addEventListener("input", e => {
+    if (e.target.dataset.q === undefined) return;
+    const q = e.target.value, etq = $("[data-etiqueta]", cont).value;
+    cont.innerHTML = elegirTareaHtml(q); $("[data-etiqueta]", cont).value = etq;
+    const i = $("[data-q]", cont); i.focus(); i.setSelectionRange(q.length, q.length);
+  });
+  cont.addEventListener("click", e => {
+    const b = e.target.closest("[data-tarea], [data-libre], [data-libre-ok]"); if (!b) return;
+    if (b.dataset.tarea !== undefined) { P.elegirTarea(b.dataset.tarea); UI.sesion = null; el.cerrar(); return; }
+    if (b.dataset.libre !== undefined) { libre = b.dataset.libre || null; cont.querySelectorAll("[data-libre]").forEach(x => x.classList.toggle("on", x === b)); return; }
+    P.elegirLibre(libre, $("[data-etiqueta]", cont).value); UI.sesion = null; el.cerrar();
+  });
+  cont.addEventListener("keydown", e => { if (e.target.dataset.etiqueta !== undefined && e.key === "Enter") { e.preventDefault(); P.elegirLibre(libre, e.target.value); el.cerrar(); } });
 }
 
 // ---------- clics en la vista ----------
@@ -444,6 +458,13 @@ v.addEventListener("click", async e => {
   // enfoque
   if (d.tipo) { P.elegirTipo(d.tipo); return; }
   if (d.modo) { P.elegirModo(d.modo); return; }
+  if (d.minutos) { P.elegirMinutos(d.minutos); return; }
+  if (d.minutosOtro !== undefined) { const n = await pedirTexto("¿Cuántos minutos?", String(P.estado().minutos || 45), { boton: "Listo" }); if (n && Number(n) > 0) P.elegirMinutos(n); return; }
+  if (d.infoMetodos !== undefined) {
+    hoja(`<div class="info-metodos"><h2>Métodos de estudio</h2>${Object.values(P.METODOS).map(m => `<h3>${esc(m.nombre)} <span class="suave">${esc(m.corto)}</span></h3><p>${esc(m.desc)}</p>`).join("")}
+      <p class="suave peque">Todos funcionan con una tarea (y sus pasos), solo con una asignatura o sin nada. El tiempo cuenta igual en Estadísticas.</p></div>`, { clase: "peque" });
+    return;
+  }
   if (d.p) { P[d.p](); return; }
   if (d.elegirTarea !== undefined) return elegirTarea();
   if (d.subCheck) { const s = S.tareas.find(x => x.id === d.subCheck); if (s) { vibrar(); D.alternar(s); } return; }

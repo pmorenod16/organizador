@@ -11,43 +11,48 @@ const R = 108, CIRC = 2 * Math.PI * R;
 const diaDe = ts => fechaDe(new Date(ts));
 
 export function enfoque(ui) {
-  const e = P.estado();
+  const e = P.estado(), M = P.metodo();
   const t = e.tareaId && S.tareas.find(x => x.id === e.tareaId);
-  const p = t && proyectoDe(t.proyectoId);
+  const p = t ? proyectoDe(t.proyectoId) : e.proyectoId ? proyectoDe(e.proyectoId) : null;
   const hoy = hoyISO();
   const focosHoy = S.focos.filter(f => diaDe(f.inicio) === hoy).sort((a, b) => b.inicio - a.inicio);
-  const pomosHoy = focosHoy.filter(f => f.tipo === "pomodoro").length;
   const minHoy = focosHoy.reduce((s, f) => s + (f.minutos || 0), 0);
-  const obj = Number(S.ajustes.objetivo) || 8;
+  const obj = Number(S.ajustes.objetivo) || 8, unidad = Number(S.ajustes.foco) || 25;
+  const hechosHoy = Math.floor(minHoy / unidad);
   const pasos = t ? (hijosPorPadre(S.tareas).get(t.id) || []).slice().sort(compararManual) : [];
   const sigPaso = pasos.find(x => !x.hecha);
-  const parado = e.estado === "parado";
+  const parado = e.estado === "parado", subiendo = P.subiendo();
+  const etiquetaReloj = e.modo !== "foco" ? P.NOMBRES[e.modo] : M.libre ? (e.tipo === "flow" ? "Flowtime · estudiando" : "Cronómetro") : M.sinDescanso ? `Temporizador · ${e.minutos} min` : "Concentración";
+  const que = t ? `<span class="punto" style="background:${esc(p?.color || "var(--suave)")}"></span><span><b>${esc(t.titulo)}</b><small>${esc(p?.nombre || "Bandeja")}${t.pomos ? ` · ${t.pomos}${t.pomosEstimados ? "/" + t.pomosEstimados : ""} 🍅` : ""}</small></span>`
+    : p || e.etiqueta ? `<span class="punto" style="background:${esc(p?.color || "var(--suave)")}"></span><span><b>${esc(e.etiqueta || "Estudio libre")}</b><small>${esc(p?.nombre || "Sin asignatura")} · sin tarea</small></span>`
+    : `<span class="suave">Estudio libre · toca para elegir tarea o asignatura (opcional)</span>`;
   return `<div class="enfoque modo-${e.modo} ${ui.pantallaCompleta ? "completa" : ""}">
-    <header class="vista-cab"><div class="tit"><h1>Enfoque</h1></div>
-      <div class="seg" role="tablist">${[["pomodoro", "Pomodoro"], ["crono", "Cronómetro"]].map(([k, n]) => `<button data-tipo="${k}" class="${e.tipo === k ? "on" : ""}" ${parado ? "" : "disabled"}>${n}</button>`).join("")}</div>
-    </header>
-    ${e.tipo === "pomodoro" ? `<div class="seg modos">${Object.entries(P.NOMBRES).map(([k, n]) => `<button data-modo="${k}" class="${e.modo === k ? "on" : ""}" ${parado ? "" : "disabled"}>${n}</button>`).join("")}</div>` : ""}
+    <header class="vista-cab"><div class="tit"><h1>Enfoque</h1></div><div class="acc-cab"><button class="icono" data-info-metodos aria-label="Qué es cada método">?</button></div></header>
+    <div class="metodos" role="tablist" data-nodeslizar>${Object.entries(P.METODOS).map(([k, m]) => `<button data-tipo="${k}" class="${e.tipo === k ? "on" : ""}" ${parado || e.tipo === k ? "" : "disabled"}><b>${m.nombre}</b><small>${m.corto}</small></button>`).join("")}</div>
+    <p class="desc-metodo suave">${esc(M.desc)}</p>
+    ${parado && !M.libre && !M.sinDescanso ? `<div class="seg modos">${Object.entries(P.NOMBRES).filter(([k]) => k !== "largo" || M.largo).map(([k, n]) => `<button data-modo="${k}" class="${e.modo === k ? "on" : ""}">${n}</button>`).join("")}</div>` : ""}
+    ${parado && e.tipo === "cuenta" ? `<div class="seg minutos">${[15, 30, 45, 60, 90, 120].map(n => `<button data-minutos="${n}" class="${Number(e.minutos) === n ? "on" : ""}">${n < 60 ? n + " min" : n / 60 + " h"}</button>`).join("")}<button data-minutos-otro>Otro</button></div>` : ""}
     <div class="reloj">
       <svg viewBox="0 0 240 240" aria-hidden="true"><circle cx="120" cy="120" r="${R}" class="pista"/><circle cx="120" cy="120" r="${R}" class="avance" data-avance style="stroke-dasharray:${CIRC} ${CIRC}"/></svg>
-      <div class="centro-reloj"><div class="tiempo" data-tiempo>${P.formato(P.tiempo())}</div><div class="suave" data-estado>${e.tipo === "crono" ? "Cronómetro" : P.NOMBRES[e.modo]}${e.estado === "pausa" ? " · en pausa" : ""}</div>
-      ${e.tipo === "pomodoro" ? `<div class="ciclos">${Array.from({ length: Number(S.ajustes.cadaLargo) || 4 }, (_, i) => `<i class="${i < e.ciclos % (Number(S.ajustes.cadaLargo) || 4) ? "on" : ""}"></i>`).join("")}</div>` : ""}</div>
+      <div class="centro-reloj"><div class="tiempo" data-tiempo>${P.formato(P.tiempo())}</div><div class="suave" data-estado>${etiquetaReloj}${e.estado === "pausa" ? " · en pausa" : ""}</div>
+      ${M.cada ? `<div class="ciclos">${Array.from({ length: M.cada() }, (_, i) => `<i class="${i < e.ciclos % M.cada() ? "on" : ""}"></i>`).join("")}</div>` : ""}</div>
     </div>
     <div class="controles">
-      ${parado ? `<button class="btn primario enorme" data-p="empezar">${icono("play")} Empezar</button>` : ""}
-      ${e.estado === "corriendo" ? `<button class="btn enorme" data-p="pausar">Pausa</button>` : ""}
+      ${parado ? `<button class="btn primario enorme" data-p="empezar">${icono("play")} ${e.modo === "foco" ? "Empezar" : "Empezar descanso"}</button>` : ""}
+      ${!parado && e.tipo === "flow" && e.modo === "foco" ? `<button class="btn primario enorme" data-p="descansar">Descansar</button>` : ""}
+      ${e.estado === "corriendo" && !(e.tipo === "flow" && e.modo === "foco") ? `<button class="btn enorme" data-p="pausar">Pausa</button>` : ""}
       ${e.estado === "pausa" ? `<button class="btn primario enorme" data-p="reanudar">Seguir</button>` : ""}
-      ${!parado ? `<button class="btn" data-p="parar">${e.tipo === "crono" ? "Terminar" : "Parar"}</button>` : ""}
-      ${parado && e.modo !== "foco" ? `<button class="btn" data-p="saltar">Saltar descanso</button>` : ""}
-      ${!parado && e.modo !== "foco" ? `<button class="btn" data-p="saltar">Saltar</button>` : ""}
+      ${!parado ? `<button class="btn" data-p="parar">${subiendo ? "Terminar" : "Parar"}</button>` : ""}
+      ${e.modo !== "foco" ? `<button class="btn" data-p="saltar">Saltar descanso</button>` : ""}
     </div>
 
     ${ui.sesion && t && ui.sesion.tareaId === t.id ? (() => {
       const s = ui.sesion, hechos = focosHoy.filter(f => f.tareaId === t.id && f.tipo === "pomodoro").length;
       const queda = s.fin ? Math.round((new Date(s.fin) - Date.now()) / 60000) : null;
       const antes = s.ini && new Date(s.ini) > new Date();
-      return `<div class="sesion-foco">${!s.fin ? "Sesión de estudio" : antes ? `Sesión de <b>${s.ini.slice(11)}</b> a <b>${s.fin.slice(11)}</b>` : `Sesión hasta las <b>${s.fin.slice(11)}</b>${queda > 0 ? ` · quedan ${minutosTexto(queda)}` : " · ya ha acabado"}`}${s.pomos ? ` · ${hechos} de ${s.pomos} 🍅` : ""}</div>`;
+      return `<div class="sesion-foco">${!s.fin ? "Sesión de estudio" : antes ? `Sesión de <b>${s.ini.slice(11)}</b> a <b>${s.fin.slice(11)}</b>` : `Sesión hasta las <b>${s.fin.slice(11)}</b>${queda > 0 ? ` · quedan ${minutosTexto(queda)}` : " · ya ha acabado"}`}${s.pomos && e.tipo === "pomodoro" ? ` · ${hechos} de ${s.pomos} 🍅` : ""}</div>`;
     })() : ""}
-    <button class="tarea-foco" data-elegir-tarea>${t ? `<span class="punto" style="background:${esc(p?.color || "var(--suave)")}"></span><span><b>${esc(t.titulo)}</b><small>${esc(p?.nombre || "Bandeja")}${t.pomos ? ` · ${t.pomos}${t.pomosEstimados ? "/" + t.pomosEstimados : ""} 🍅` : ""}</small></span>` : `<span class="suave">¿En qué vas a trabajar? Elige una tarea</span>`}<span class="cambiar">Cambiar</span></button>
+    <button class="tarea-foco" data-elegir-tarea>${que}<span class="cambiar">${t || p || e.etiqueta ? "Cambiar" : "Elegir"}</span></button>
     ${sigPaso ? `<div class="sig-paso"><div class="etiqueta">Siguiente paso</div>
       <ul class="pasos foco">${pasos.map(s => `<li class="${s.hecha ? "hecha" : ""} ${s === sigPaso ? "actual" : ""}"><button class="check" data-sub-check="${esc(s.id)}" style="--c:${colorPrioridad(s.prioridad)}"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9"/></svg></button><span>${esc(s.titulo)}</span></li>`).join("")}</ul></div>` : t && pasos.length ? `<p class="suave centrado">✅ Todos los pasos hechos. ¿Marcas la tarea? <button class="enlace" data-acabar-tarea="${esc(t.id)}">Marcar hecha</button></p>` : ""}
 
@@ -58,11 +63,11 @@ export function enfoque(ui) {
     </div>
 
     <section class="resumen-foco">
-      <div class="tomates" title="Objetivo diario">${Array.from({ length: Math.max(obj, pomosHoy) }, (_, i) => `<i class="${i < pomosHoy ? "on" : ""}"></i>`).join("")}</div>
-      <p><b>${pomosHoy}</b> de ${obj} pomodoros · <b>${minutosTexto(minHoy)}</b> de concentración hoy</p>
-      ${focosHoy.length ? `<ul class="sesiones">${focosHoy.slice(0, 12).map(f => `<li><span>${new Date(f.inicio).toTimeString().slice(0, 5)}</span><span>${esc(f.titulo || "Sin tarea")}</span><span>${f.minutos} min</span><button class="icono peque" data-borrar-foco="${esc(f.id)}" aria-label="Borrar sesión">×</button></li>`).join("")}</ul>` : ""}
+      <div class="tomates" title="Objetivo diario (en bloques de ${unidad} min)">${Array.from({ length: Math.max(obj, hechosHoy) }, (_, i) => `<i class="${i < hechosHoy ? "on" : ""}"></i>`).join("")}</div>
+      <p><b>${minutosTexto(minHoy)}</b> de concentración hoy · objetivo ${minutosTexto(obj * unidad)}</p>
+      ${focosHoy.length ? `<ul class="sesiones">${focosHoy.slice(0, 12).map(f => `<li><span>${new Date(f.inicio).toTimeString().slice(0, 5)}</span><span>${esc(f.titulo || proyectoDe(f.proyectoId)?.nombre || "Estudio libre")}${f.metodo && f.metodo !== "pomodoro" ? ` <small class="suave">· ${esc(P.METODOS[f.metodo]?.nombre || "")}</small>` : ""}</span><span>${f.minutos} min</span><button class="icono peque" data-borrar-foco="${esc(f.id)}" aria-label="Borrar sesión">×</button></li>`).join("")}</ul>` : ""}
     </section>
-    <p class="suave peque centrado consejo">Consejo: deja el móvil boca abajo y lejos. ${P.estado().tipo === "pomodoro" ? `Tras ${S.ajustes.cadaLargo || 4} pomodoros toca un descanso largo.` : ""}</p>
+    <p class="suave peque centrado consejo">Consejo: deja el móvil boca abajo y lejos. En los descansos, levántate y no mires el móvil.</p>
   </div>`;
 }
 
@@ -72,9 +77,9 @@ export function tic(raiz) {
   const e = P.estado(), ms = P.tiempo();
   el.textContent = P.formato(ms);
   const av = raiz.querySelector("[data-avance]");
-  const frac = e.tipo === "crono" ? (ms / 60000 % 60) / 60 : 1 - ms / P.total();
+  const frac = P.subiendo() ? (ms / 60000 % 60) / 60 : 1 - ms / P.total();
   av.style.strokeDashoffset = String(CIRC * (1 - Math.max(0, Math.min(1, frac))));
-  document.title = e.estado === "corriendo" ? `${P.formato(ms)} · ${e.tipo === "crono" ? "Cronómetro" : P.NOMBRES[e.modo]}` : "Tasca";
+  document.title = e.estado === "corriendo" ? `${P.formato(ms)} · ${e.modo === "foco" ? P.metodo().nombre : P.NOMBRES[e.modo]}` : "Tasca";
 }
 
 /** Lista para elegir la tarea del pomodoro */
@@ -83,9 +88,15 @@ export function elegirTareaHtml(q = "") {
   const base = q ? deVista("buscar", S.tareas, h, { q }).filter(t => !t.hecha) : deVista("hoy", S.tareas, h).concat(deVista("proximos", S.tareas, h, { dias: 7 }).filter(t => t.fecha > h));
   const vistos = new Set();
   const l = base.filter(t => !vistos.has(t.id) && vistos.add(t.id)).slice(0, 40);
-  return `<h2>¿En qué vas a trabajar?</h2><input type="search" data-q placeholder="Buscar tarea…" value="${esc(q)}">
+  const e = P.estado();
+  return `<h2>¿En qué vas a trabajar?</h2>
+    <div class="libre-caja"><h3>Sin tarea</h3>
+      <input data-etiqueta placeholder="Qué vas a hacer (opcional): repasar apuntes, examen de prueba…" value="${esc(e.etiqueta || "")}">
+      <div class="chips">${[`<button type="button" class="chip ${!e.proyectoId ? "on" : ""}" data-libre="">Ninguna asignatura</button>`, ...S.proyectos.filter(p => !p.archivado).map(p => `<button type="button" class="chip ${e.proyectoId === p.id && !e.tareaId ? "on" : ""}" data-libre="${esc(p.id)}"><span class="punto" style="background:${esc(p.color)}"></span>${esc(p.nombre)}</button>`)].join("")}</div>
+      <button class="btn primario" data-libre-ok>Estudio libre</button></div>
+    <h3>O una tarea</h3><input type="search" data-q placeholder="Buscar tarea…" value="${esc(q)}">
     <ul class="elegir">${l.map(t => { const p = proyectoDe(t.proyectoId); return `<li><button data-tarea="${esc(t.id)}"><span class="punto" style="background:${esc(p?.color || "var(--suave)")}"></span><span>${esc(t.titulo)}<small>${esc([p?.nombre, t.fecha === h ? "Hoy" : t.fecha].filter(Boolean).join(" · "))}</small></span></button></li>`; }).join("") || `<li class="suave">No hay tareas${q ? " con ese nombre" : " para hoy ni esta semana"}.</li>`}
-    <li><button data-tarea=""><span class="punto"></span><span>Sin tarea</span></button></li></ul>`;
+    </ul>`;
 }
 
 // ---------------- estadísticas ----------------
