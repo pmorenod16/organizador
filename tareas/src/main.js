@@ -271,7 +271,7 @@ function moverIndicador(pos, animar = false) {
 
 addEventListener("resize", () => moverIndicador(PESTANAS.findIndex(([r]) => r === pestanaDe(UI.ruta))));
 function contar(vista, extra) { return deVista(vista, S.tareas, hoyISO(), extra).length; }
-// Barra de abajo: lo que más se usa al estudiar, y el + en el centro, al alcance del pulgar
+// Barra de abajo: lo que más se usa al estudiar (el + sigue flotando encima, a la derecha)
 const PESTANAS = [["hoy", "Hoy", "hoy"], ["proximos", "Próximo", "proximo"], ["enfoque", "Enfoque", "tomate"], ["explorar", "Proyectos", "almohadilla"]];
 const pestanaDe = r => (["proyecto", "estadisticas", "hechas", "ajustes", "bandeja"].includes(r) ? "explorar" : r === "buscar" ? null : r);
 function pintarMenu() {
@@ -298,8 +298,7 @@ function pintarMenu() {
   const pes = pestanaDe(UI.ruta);
   const abajo = $("#abajo");
   const pestana = ([r, n, i]) => `<a href="#/${r}" data-pes="${r}">${icono(i)}<span>${n}</span><i class="globo" hidden></i></a>`;
-  if (!abajo.querySelector(".indicador")) abajo.innerHTML = `<span class="indicador"></span>` + PESTANAS.slice(0, 2).map(pestana).join("") +
-    `<button class="anadir-abajo" data-anadir-abajo aria-label="Añadir tarea">${icono("mas")}</button>` + PESTANAS.slice(2).map(pestana).join("");
+  if (!abajo.querySelector(".indicador")) abajo.innerHTML = `<span class="indicador"></span>` + PESTANAS.map(pestana).join("");
   for (const a of abajo.querySelectorAll("a")) {
     a.classList.toggle("on", a.dataset.pes === pes);
     const g = a.querySelector(".globo");
