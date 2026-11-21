@@ -628,3 +628,17 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
   #vista { padding-bottom: calc(170px + env(safe-area-inset-bottom)); }
   .toast { bottom: calc(160px + env(safe-area-inset-bottom)); }
 }
+/* sesiones de estudio enlazadas con el calendario */
+.meta .sesion { color: var(--texto); font-weight: 550; }
+.btn-estudiar { flex: none; display: inline-flex; align-items: center; gap: 4px; border: 0; background: var(--acento); color: var(--acento-texto); border-radius: 999px; padding: 6px 11px 6px 9px; font-size: .8rem; font-weight: 600; align-self: center; transition: transform .3s var(--spring); }
+.btn-estudiar .ico { width: 12px; height: 12px; fill: currentColor; }
+.btn-estudiar:active { transform: scale(.93); }
+.banner-estudio { display: flex; align-items: center; gap: 12px; justify-content: space-between; background: var(--suave2); border-radius: 16px; padding: 12px 14px; margin: 14px 0 4px; }
+.banner-estudio div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.banner-estudio small { color: var(--suave); font-size: .82rem; }
+.banner-estudio .btn { flex: none; }
+.banner-estudio .btn .ico { fill: currentColor; }
+.sesion-foco { margin-top: 18px; background: var(--suave2); border-radius: 999px; padding: 7px 14px; font-size: .88rem; color: var(--suave); }
+.sesion-foco b { color: var(--texto); }
+.botones.col { flex-direction: column; align-items: stretch; }
+@media (max-width: 420px) { .banner-estudio { flex-direction: column; align-items: stretch; } }

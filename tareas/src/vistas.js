@@ -15,16 +15,19 @@ const botonBuscar = `<a class="icono solo-movil" href="#/buscar" aria-label="Bus
 const diaTitulo = f => { const [, m, d] = f.split("-").map(Number); return `${d} ${MESES[m - 1].slice(0, 3)} · ${DIAS[diaSemana(f)]}`; };
 
 // ---------------- Hoy ----------------
-const evs = f => filasEventos(Cal.delDia(f), f, Cal.horaDe);
+/** Eventos del día que no son ya una tarea (los enlazados se ven en su tarea, con la hora de la sesión) */
+const evs = (f, enl = Cal.enlacesDia(f)) => filasEventos(Cal.delDia(f).filter(e => !enl.porEvento.has(e.id)), f, Cal.horaDe);
+const porSesion = (l, enl) => l.slice().sort((a, b) => (enl.porTarea.get(a.id)?.ini.slice(11) || a.hora || "99") < (enl.porTarea.get(b.id)?.ini.slice(11) || b.hora || "99") ? -1 : 1);
 export function hoy() {
   const h = hoyISO();
   const l = deVista("hoy", S.tareas, h);
   const tarde = l.filter(t => t.fecha < h), deHoy = l.filter(t => t.fecha === h);
+  const enl = Cal.enlacesDia(h);
   const hechasHoy = S.tareas.filter(t => t.hecha && t.hechaEn && new Date(t.hechaEn).toDateString() === new Date().toDateString() && !t.padreId).length;
   return cab("Hoy", { sub: l.length ? `${icono("hecho")} ${l.length} ${l.length === 1 ? "tarea" : "tareas"}` : "", acciones: botonBuscar + botonMenu("data-menu-vista") }) +
     (tarde.length ? `<h2 class="grupo tarde-t">Vencidas <span>${tarde.length}</span><button class="enlace" data-reprogramar="hoy">Reprogramar</button></h2><ul class="lista">${filas(tarde)}</ul>` : "") +
-    `<h2 class="grupo">${esc(diaTitulo(h))} · Hoy</h2>` + evs(h) +
-    (deHoy.length ? `<ul class="lista">${filas(deHoy, { fecha: false })}</ul>` : "") + filaAnadir({ fecha: h }) +
+    `<h2 class="grupo">${esc(diaTitulo(h))} · Hoy</h2>` + evs(h, enl) +
+    (deHoy.length ? `<ul class="lista">${filas(porSesion(deHoy, enl), { fecha: false, sesiones: enl.porTarea })}</ul>` : "") + filaAnadir({ fecha: h }) +
     (!l.length ? vacio(hechasHoy ? "¡Todo hecho por hoy!" : "Disfruta del día", hechasHoy ? `Has completado ${hechasHoy} ${hechasHoy === 1 ? "tarea" : "tareas"}.` : "No tienes nada para hoy.") : "");
 }
 
@@ -59,8 +62,8 @@ export function proximos(ui) {
      <div class="franja">${dias.map(d => `<button class="${d === h ? "hoy" : ""} ${d < h ? "pasado" : ""}" data-ir-dia="${d}"><small>${DIAS_CORTOS[diaSemana(d)]}</small><b>${Number(d.slice(8))}</b><i>${porDia.get(d)?.length ? "•" : ""}</i></button>`).join("")}</div>` +
     (tarde.length && inicio === lunesDe(h) ? `<h2 class="grupo tarde-t">Vencidas <span>${tarde.length}</span><button class="enlace" data-reprogramar="hoy">Reprogramar</button></h2><ul class="lista">${filas(tarde)}</ul>` : "") +
     listaDias.map(d => {
-      const ts = porDia.get(d) || [];
-      return `<h2 class="grupo" id="d-${d}">${esc(diaTitulo(d))}${d === h ? " · Hoy" : d === sumarDias(h, 1) ? " · Mañana" : ""} ${ts.length ? `<span>${ts.length}</span>` : ""}</h2>${evs(d)}${ts.length ? `<ul class="lista">${filas(ts, { fecha: false })}</ul>` : ""}${filaAnadir({ fecha: d })}`;
+      const ts = porDia.get(d) || [], enl = Cal.enlacesDia(d);
+      return `<h2 class="grupo" id="d-${d}">${esc(diaTitulo(d))}${d === h ? " · Hoy" : d === sumarDias(h, 1) ? " · Mañana" : ""} ${ts.length ? `<span>${ts.length}</span>` : ""}</h2>${evs(d, enl)}${ts.length ? `<ul class="lista">${filas(porSesion(ts, enl), { fecha: false, sesiones: enl.porTarea })}</ul>` : ""}${filaAnadir({ fecha: d })}`;
     }).join("");
 }
 
@@ -78,7 +81,7 @@ export function calendario(estado, selector = "") {
   for (const l of porDia.values()) l.sort(comparar);
   const celdas = [];
   for (let i = 0; i < semanas * 7; i++) {
-    const d = sumarDias(inicio, i), l = porDia.get(d) || [], pend = l.filter(t => !t.hecha), ev = Cal.delDia(d);
+    const d = sumarDias(inicio, i), l = porDia.get(d) || [], pend = l.filter(t => !t.hecha), enlD = Cal.enlacesDia(d), ev = Cal.delDia(d).filter(e => !enlD.porEvento.has(e.id));
     celdas.push(`<button class="dia ${d.slice(0, 7) !== mes ? "fuera" : ""} ${d === h ? "hoy" : ""} ${d === sel ? "sel" : ""} ${diaSemana(d) > 4 ? "finde" : ""}" data-dia="${d}">
       <span class="num">${Number(d.slice(8))}</span>
       <span class="eventos">${ev.slice(0, 2).map(e => `<em class="ev" style="--c:${esc(e.color)}">${e.todoElDia ? "" : `<b>${e.ini.slice(11)}</b> `}${esc(e.titulo)}</em>`).join("")}${l.slice(0, Math.max(1, 3 - Math.min(2, ev.length))).map(t => `<em class="${t.hecha ? "hecha" : ""}" style="--c:${esc(proyectoDe(t.proyectoId)?.color || "var(--suave)")}">${t.hora ? `<b>${t.hora}</b> ` : ""}${esc(t.titulo)}</em>`).join("")}${(() => { const vistos = Math.min(2, ev.length) + Math.min(l.length, Math.max(1, 3 - Math.min(2, ev.length))); const resto = ev.length + l.length - vistos; return resto > 0 ? `<small>+${resto}</small>` : ""; })()}</span>
@@ -86,12 +89,12 @@ export function calendario(estado, selector = "") {
     </button>`);
   }
   const deSel = porDia.get(sel) || [];
-  const pend = deSel.filter(t => !t.hecha), hech = deSel.filter(t => t.hecha);
+  const pend = deSel.filter(t => !t.hecha), hech = deSel.filter(t => t.hecha), enlSel = Cal.enlacesDia(sel);
   return cab("Próximo", { acciones: selector }) +
     `<div class="semana-nav"><b>${MESES[m - 1].replace(/^./, c => c.toUpperCase())} ${a}</b><span class="sep"></span><button class="icono" data-mes="-1" aria-label="Mes anterior">‹</button><button class="btn peque" data-mes="0">Hoy</button><button class="icono" data-mes="1" aria-label="Mes siguiente">›</button></div>
      <div class="mes"><div class="sem">${DIAS_CORTOS.map(d => `<span>${d}</span>`).join("")}</div><div class="rejilla">${celdas.join("")}</div></div>
-     <h2 class="grupo">${esc(diaTitulo(sel))}${sel === h ? " · Hoy" : ""} ${pend.length ? `<span>${pend.length}</span>` : ""}</h2>${evs(sel)}
-     ${pend.length ? `<ul class="lista">${filas(pend, { fecha: false })}</ul>` : ""}${filaAnadir({ fecha: sel })}
+     <h2 class="grupo">${esc(diaTitulo(sel))}${sel === h ? " · Hoy" : ""} ${pend.length ? `<span>${pend.length}</span>` : ""}</h2>${evs(sel, enlSel)}
+     ${pend.length ? `<ul class="lista">${filas(porSesion(pend, enlSel), { fecha: false, sesiones: enlSel.porTarea })}</ul>` : ""}${filaAnadir({ fecha: sel })}
      ${hech.length ? `<h2 class="grupo">Completadas <span>${hech.length}</span></h2><ul class="lista">${filas(hech, { fecha: false, sinFoco: true })}</ul>` : ""}
      <p class="suave peque centrado solo-pc">Puedes arrastrar una tarea a otro día.</p>`;
 }

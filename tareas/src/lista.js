@@ -65,6 +65,8 @@ export function filas(lista, op = {}) {
     const abierta = estaAbierta(t.id);
     const p = op.proyecto !== false ? proyectoDe(t.proyectoId) : null;
     const meta = [];
+    const ses = op.sesiones?.get(t.id);
+    if (ses) meta.push(`<span class="sesion">${icono("cal")}${ses.ini.slice(11)}–${ses.fin.slice(11)}</span>`);
     if (op.fecha !== false && t.fecha && t.fecha !== op.padreFecha) meta.push(`<span class="fecha ${vencida(t, hoy) ? "tarde" : t.fecha === hoy ? "hoy" : ""}">${icono("cal")}${esc(fechaBonita(t.fecha, hoy))}${t.hora ? " · " + t.hora : ""}</span>`);
     else if (t.hora) meta.push(`<span class="fecha">${icono("reloj")}${t.hora}</span>`);
     if (t.duracion) meta.push(`<span>${esc(minutosTexto(t.duracion))}</span>`);
@@ -85,7 +87,8 @@ export function filas(lista, op = {}) {
           ${meta.length ? `<div class="meta">${meta.join("")}</div>` : ""}
           ${!abierta ? barra : ""}
         </div>
-        ${!t.hecha && !op.sinFoco ? `<button class="btn-foco" data-acc="foco" aria-label="Empezar un pomodoro con esta tarea" title="Pomodoro">${icono("play")}</button>` : ""}
+        ${!t.hecha && ses ? `<button class="btn-estudiar" data-acc="estudiar" aria-label="Empezar a estudiar">${icono("play")}<span>Estudiar</span></button>`
+          : !t.hecha && !op.sinFoco ? `<button class="btn-foco" data-acc="foco" aria-label="Empezar un pomodoro con esta tarea" title="Pomodoro">${icono("play")}</button>` : ""}
         ${pr.total ? `<button class="plegar ${abierta ? "abierta" : ""}" data-acc="plegar" aria-label="${abierta ? "Ocultar" : "Ver"} pasos">${icono("flecha")}</button>` : ""}
       </div>
       ${abierta && (hijos.get(t.id) || []).length ? `<ul class="subtareas">${filas(hijos.get(t.id), { ...op, nivel: nivel + 1, hijos, proyecto: false, verHechas: true, padreFecha: t.fecha })}</ul>` : ""}

@@ -5,6 +5,7 @@ import { WORKER_URL } from "../../config.js";
 import { expandir } from "../../src/ical.js";
 import { S } from "./datos.js";
 import { fechaDe, sumarDias, hoyISO } from "./fechas.js";
+import { enlazar } from "./sesiones.js";
 
 const LS = "tasca.eventos";
 const DIAS_ATRAS = 7, DIAS_DELANTE = 70, CADA = 30 * 60 * 1000;
@@ -71,6 +72,8 @@ export function delDia(f) {
     .map(e => ({ ...e, cal: cfg.get(e.url).nombre || "Calendario", color: cfg.get(e.url).color || COLORES_CAL[0] }))
     .sort((a, b) => Number(b.todoElDia) - Number(a.todoElDia) || (a.ini < b.ini ? -1 : 1));
 }
+/** Sesiones del día: eventos enlazados con su tarea de estudio */
+export const enlacesDia = f => enlazar(f, delDia(f), S.tareas, S.proyectos);
 export const horaDe = (e, f) => (e.todoElDia ? "Todo el día" : `${e.ini.slice(0, 10) === f ? e.ini.slice(11) : "…"}–${e.fin.slice(0, 10) === f ? e.fin.slice(11) : "…"}`);
 
 /** Primera vez: copia los calendarios que ya tenías puestos en el Organizador */

@@ -19,6 +19,7 @@ import { deVista } from "./logica.js";
 import * as Act from "./actualizar.js";
 import * as Cal from "./calendarios.js";
 import { fechaBonita } from "./fechas.js";
+import { minutosEntre } from "./sesiones.js";
 import { conEnlaces } from "./ui.js";
 
 const PANTALLAS = ["carga", "login", "sinAcceso", "app"];
@@ -32,7 +33,7 @@ try { tema(localStorage.getItem("tasca.tema") || "auto"); } catch {}
 
 // ---------- service worker y actualizaciones ----------
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
-navigator.serviceWorker?.addEventListener("message", e => { if (e.data?.tarea) abrirTarea(e.data.tarea, { alFoco }); });
+navigator.serviceWorker?.addEventListener("message", e => { if (e.data?.tarea) abrirTarea(e.data.tarea, FICHA); });
 // actualizarse sola (como el Armario)
 Act.empezar();
 
@@ -94,7 +95,7 @@ Au.onAuthStateChanged(auth, user => {
 // ---------- estado de la interfaz ----------
 const UI = { ruta: "hoy", arg: null, cal: {}, verHechas: {}, q: "", ruido: "", volumen: 0.5, pantallaCompleta: false, modoProximo: "lista", semana: null };
 try { Object.assign(UI, JSON.parse(localStorage.getItem("tasca.ui") || "{}"), { ruido: "", pantallaCompleta: false }); } catch {}
-const guardarUI = () => { try { localStorage.setItem("tasca.ui", JSON.stringify({ cal: UI.cal, verHechas: UI.verHechas, volumen: UI.volumen, modoProximo: UI.modoProximo })); } catch {} };
+const guardarUI = () => { try { localStorage.setItem("tasca.ui", JSON.stringify({ cal: UI.cal, verHechas: UI.verHechas, volumen: UI.volumen, modoProximo: UI.modoProximo, sesion: UI.sesion })); } catch {} };
 
 function leerRuta() {
   const [r, arg] = (location.hash.replace(/^#\/?/, "") || "hoy").split("/");
@@ -132,11 +133,20 @@ function verEvento(id, dia) {
     <h2>${esc(e.titulo)}</h2>
     <p>${icono("cal")} ${esc(cuando)}</p>${e.lugar ? `<p>📍 ${esc(e.lugar)}</p>` : ""}${e.desc ? `<p class="suave">${conEnlaces(e.desc)}</p>` : ""}
     <p class="suave peque">Es un evento de tu calendario: se cambia en Google Calendar.</p>
-    <div class="botones"><button class="btn primario" data-crear>${icono("mas")} Crear tarea a partir del evento</button></div></div>`, { clase: "peque" });
+    <div class="botones col">${!e.todoElDia ? `<button class="btn primario" data-enlazar>${icono("sub")} Enlazar con una tarea de estudio</button>` : ""}<button class="btn" data-crear>${icono("mas")} Crear tarea a partir del evento</button></div></div>`, { clase: "peque" });
+  el.querySelector("[data-enlazar]")?.addEventListener("click", async () => {
+    const cands = S.tareas.filter(t => !t.hecha && !t.padreId && t.fecha && Math.abs(new Date(t.fecha) - new Date(dia)) <= 7 * 864e5)
+      .sort((a, b) => Math.abs(new Date(a.fecha) - new Date(dia)) - Math.abs(new Date(b.fecha) - new Date(dia))).slice(0, 15);
+    if (!cands.length) { toast("No hay tareas cerca de ese día"); return; }
+    const r = await menu(cands.map(t => ({ id: t.id, texto: `${t.titulo} · ${fechaBonita(t.fecha)}`, icono: "almohadilla" })), "¿Qué tarea es esta sesión?");
+    if (!r) return;
+    D.cambiarTarea(r, { enlace: e.id, fecha: dia });
+    el.cerrar(); toast("Enlazada: tócala para empezar a estudiar");
+  });
   el.querySelector("[data-cerrar]").onclick = () => el.cerrar();
   el.querySelector("[data-crear]").onclick = () => {
     const t = D.nuevaTarea({ titulo: e.titulo, notas: [e.lugar, e.desc].filter(Boolean).join("\n"), fecha: e.todoElDia ? e.ini : e.ini.slice(0, 10), hora: e.todoElDia ? null : e.ini.slice(11), recordatorios: e.todoElDia || S.ajustes.aviso == null ? null : [S.ajustes.aviso] });
-    D.guardarTarea(t); el.cerrar(); toast("Tarea creada en la Bandeja"); abrirTarea(t.id, { alFoco });
+    D.guardarTarea(t); el.cerrar(); toast("Tarea creada en la Bandeja"); abrirTarea(t.id, FICHA);
   };
 }
 
@@ -344,11 +354,27 @@ document.addEventListener("keydown", e => {
 });
 
 // ---------- pomodoro ----------
+/** «Empezar estudio»: Enfoque listo con la tarea, sus pasos y los pomodoros que caben en la sesión del calendario */
+function estudiar(id) {
+  const t = S.tareas.find(x => x.id === id); if (!t) return;
+  const ses = t.fecha ? Cal.enlacesDia(t.fecha).porTarea.get(id) : null;
+  if (ses) {
+    const ciclo = (Number(S.ajustes.foco) || 25) + (Number(S.ajustes.corto) || 5);
+    const n = Math.max(1, Math.round(minutosEntre(ses.ini, ses.fin) / ciclo));
+    if (!t.pomosEstimados) D.cambiarTarea(id, { pomosEstimados: (t.pomos || 0) + n });
+    UI.sesion = { tareaId: id, ini: ses.ini, fin: ses.fin, titulo: ses.titulo, pomos: n };
+  } else UI.sesion = { tareaId: id, fin: null, titulo: null, pomos: t.pomosEstimados ? Math.max(1, t.pomosEstimados - (t.pomos || 0)) : null };
+  guardarUI();
+  if (P.estado().estado !== "parado") P.parar();
+  P.elegirTipo("pomodoro"); P.elegirModo("foco"); P.empezar(id);
+  location.hash = "#/enfoque";
+}
 function alFoco(id) {
   if (P.estado().estado !== "parado") { P.elegirTarea(id); toast("Pomodoro con esta tarea"); }
   else { P.elegirTipo(P.estado().tipo); P.elegirModo("foco"); P.empezar(id); }
   location.hash = "#/enfoque";
 }
+const FICHA = { alFoco, alEstudiar: estudiar };
 P.suscribir(() => { if (S.listo) { if (UI.ruta === "enfoque") pintar(); else pintarMiniFoco(); } });
 setInterval(() => {
   const r = P.comprobar();
@@ -383,9 +409,10 @@ v.addEventListener("click", async e => {
     toast(r.texto, { accion: "Deshacer", alPulsar: r.deshacer });
     return;
   }
-  if (t && acc === "abrir") return abrirTarea(id, { alFoco });
+  if (t && acc === "abrir") return abrirTarea(id, FICHA);
   if (t && acc === "plegar") { alternarAbierta(id); pintar(); return; }
   if (t && acc === "foco") return alFoco(id);
+  if (t && acc === "estudiar") return estudiar(id);
   const d = b.dataset;
   if (d.evento) return verEvento(d.evento, d.eventoDia);
   if (d.calEditar !== undefined) return A.editarCalendario(d.calEditar);
@@ -515,9 +542,9 @@ v.addEventListener("drop", e => {
 new MutationObserver(() => $$(".tarea", v).forEach(li => (li.draggable = matchMedia("(pointer:fine)").matches))).observe(v, { childList: true });
 
 // avisos del sistema (APK): abrir la tarea al tocarlos
-alTocarAviso(extra => { if (extra.tarea) setTimeout(() => abrirTarea(extra.tarea, { alFoco }), 400); else if (extra.vista) location.hash = "#/" + extra.vista; });
+alTocarAviso(extra => { if (extra.tarea) setTimeout(() => abrirTarea(extra.tarea, FICHA), 400); else if (extra.vista) location.hash = "#/" + extra.vista; });
 // enlace desde un aviso web (?tarea=)
-{ const q = new URLSearchParams(location.search).get("tarea"); if (q) D.alCambiar(s => { if (s.listo && q && S.tareas.some(t => t.id === q)) { abrirTarea(q, { alFoco }); history.replaceState(null, "", location.pathname + location.hash); } }); }
+{ const q = new URLSearchParams(location.search).get("tarea"); if (q) D.alCambiar(s => { if (s.listo && q && S.tareas.some(t => t.id === q)) { abrirTarea(q, FICHA); history.replaceState(null, "", location.pathname + location.hash); } }); }
 
 leerRuta();
 // al cambiar de día con la app abierta

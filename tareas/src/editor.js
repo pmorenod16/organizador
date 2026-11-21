@@ -6,6 +6,8 @@ import { analizar } from "./rapido.js";
 import { hoyISO, sumarDias, fechaBonita, minutosTexto } from "./fechas.js";
 import { textoRepetir, hijosPorPadre, compararManual } from "./logica.js";
 import { colorPrioridad, icono, proyectoDe } from "./lista.js";
+import * as Cal from "./calendarios.js";
+import { minutosEntre } from "./sesiones.js";
 import { elegirFecha, elegirPrioridad, elegirAviso, elegirEtiquetas, elegirProyecto, menu, textoAviso } from "./selectores.js";
 
 export const colorFecha = f => { const h = hoyISO(); return !f ? "" : f < h ? "var(--p1)" : f === h ? "var(--verde)" : f === sumarDias(h, 1) ? "var(--naranja)" : f <= sumarDias(h, 7) ? "var(--morado)" : "var(--suave)"; };
@@ -88,7 +90,8 @@ export function anadir(contexto = {}) {
 // ---------------- ficha de la tarea ----------------
 const DURACIONES = [15, 25, 30, 45, 60, 90, 120, 180];
 
-export function abrirTarea(id, { alFoco } = {}) {
+export function abrirTarea(id, opciones = {}) {
+  const { alFoco, alEstudiar } = opciones;
   let t = S.tareas.find(x => x.id === id);
   if (!t) return;
   const el = hoja(`<div class="ficha" data-ficha></div>`, { clase: "hoja-ficha", alCerrar: () => quitar() });
@@ -100,6 +103,8 @@ export function abrirTarea(id, { alFoco } = {}) {
     const enfocado = activo && el.contains(activo) ? activo.name || activo.dataset?.sub : null;
     if (enfocado === "titulo" || enfocado === "notas") { pintarSubtareas(); return; } // no pisar lo que se escribe
     const padre = t.padreId && S.tareas.find(x => x.id === t.padreId);
+    const ses = !padre && t.fecha && !t.hecha ? Cal.enlacesDia(t.fecha).porTarea.get(t.id) : null;
+    const estudio = !padre && !t.hecha && (ses || (hijosPorPadre(S.tareas).get(t.id) || []).length);
     const fila = (c, ico, nombre, valor, color = "") => `<button class="fila-det" data-c="${c}"><span class="ico-det">${icono(ico)}</span><span class="nom">${nombre}</span><span class="val ${valor ? "" : "vacio-v"}" style="${color ? "color:" + color : ""}">${valor || "Añadir"}</span></button>`;
     $("[data-ficha]", el).innerHTML = `
       <div class="ficha-sup">
@@ -113,6 +118,9 @@ export function abrirTarea(id, { alFoco } = {}) {
         <textarea name="titulo" rows="1" class="ficha-titulo ${t.hecha ? "tachado" : ""}">${esc(t.titulo)}</textarea>
       </div>
       <textarea name="notas" class="ficha-notas" rows="1" placeholder="Descripción">${esc(t.notas || "")}</textarea>
+      ${estudio ? `<div class="banner-estudio">
+        <div><b>${ses ? "Sesión de estudio" : "Tarea de estudio"}</b><small>${ses ? `${esc(fechaBonita(t.fecha))} · ${ses.ini.slice(11)}–${ses.fin.slice(11)} · ${minutosTexto(minutosEntre(ses.ini, ses.fin))} en «${esc(ses.cal)}»` : "Con sus pasos para ir marcando"}</small></div>
+        <button class="btn primario" data-acc="estudiar">${icono("play")} Empezar estudio</button></div>` : ""}
       <div class="detalles">
         ${!padre ? fila("proyecto", "carpeta", "Proyecto", nombreProyecto(t.proyectoId, t.seccion)) : ""}
         ${fila("fecha", t.repetir ? "rep" : "cal", "Fecha", t.fecha ? `${esc(fechaBonita(t.fecha))}${t.hora ? " · " + t.hora : ""}${t.repetir ? " · " + esc(textoRepetir(t.repetir)) : ""}` : "", colorFecha(t.fecha))}
@@ -120,7 +128,7 @@ export function abrirTarea(id, { alFoco } = {}) {
         ${fila("aviso", "alarma", "Recordatorio", t.fecha ? textoAviso(t.recordatorios) : "")}
         ${fila("etiquetas", "etiqueta", "Etiquetas", (t.etiquetas || []).map(e => "@" + esc(e)).join(" "))}
         ${fila("duracion", "duracion", "Duración", t.duracion ? minutosTexto(t.duracion) : "")}
-        <div class="fila-det"><span class="ico-det">${icono("tomate")}</span><span class="nom">Pomodoros</span><span class="val">${t.pomos || 0} de <input type="number" name="pomosEstimados" min="0" max="40" value="${t.pomosEstimados ?? ""}" placeholder="?"></span>${!t.hecha ? `<button class="btn peque primario" data-acc="foco">${icono("play")} Empezar</button>` : ""}</div>
+        <div class="fila-det"><span class="ico-det">${icono("tomate")}</span><span class="nom">Pomodoros</span><span class="val">${t.pomos || 0} de <input type="number" name="pomosEstimados" min="0" max="40" value="${t.pomosEstimados ?? ""}" placeholder="?"></span>${!t.hecha && !estudio ? `<button class="btn peque primario" data-acc="foco">${icono("play")} Empezar</button>` : ""}</div>
       </div>
       <div data-subtareas></div>
       <p class="suave peque">Creada el ${new Date(t.creado).toLocaleDateString("es-ES")}${t.hechaVeces ? ` · completada ${t.hechaVeces} ${t.hechaVeces === 1 ? "vez" : "veces"}` : ""}</p>`;
@@ -167,7 +175,7 @@ export function abrirTarea(id, { alFoco } = {}) {
   el.addEventListener("click", async e => {
     const b = e.target.closest("button"); if (!b) return;
     if (b.dataset.cerrar !== undefined) return el.cerrar();
-    if (b.dataset.ir) { el.cerrar(); abrirTarea(b.dataset.ir, { alFoco }); return; }
+    if (b.dataset.ir) { el.cerrar(); abrirTarea(b.dataset.ir, opciones); return; }
     if (b.dataset.subCheck) { const s = S.tareas.find(x => x.id === b.dataset.subCheck); if (s) { vibrar(); D.alternar(s); } return; }
     switch (b.dataset.c) {
       case "proyecto": {
@@ -197,6 +205,7 @@ export function abrirTarea(id, { alFoco } = {}) {
         const r = await menu([
           { id: "hoy", texto: "Para hoy", icono: "hoy" }, { id: "manana", texto: "Para mañana", icono: "cal" },
           ...(!t.hecha ? [{ id: "foco", texto: "Empezar un pomodoro", icono: "tomate" }] : []),
+          ...(t.enlace ? [{ id: "desenlazar", texto: "Quitar el enlace con el calendario", icono: "cerrar" }] : []),
           { id: "subtarea", texto: "Añadir subtarea", icono: "sub" },
           { id: "duplicar", texto: "Duplicar", icono: "lista" },
           { id: "borrar", texto: "Eliminar tarea", icono: "cerrar", peligro: true },
@@ -212,6 +221,8 @@ export function abrirTarea(id, { alFoco } = {}) {
       case "hoy": guardar({ fecha: hoyISO() }); break;
       case "manana": guardar({ fecha: sumarDias(hoyISO(), 1) }); break;
       case "foco": el.cerrar(); alFoco?.(t.id); break;
+      case "estudiar": el.cerrar(); (alEstudiar || alFoco)?.(t.id); break;
+      case "desenlazar": guardar({ enlace: null }); toast("Enlace quitado"); break;
       case "subtarea": el.querySelector("[data-nuevo-paso]")?.focus(); break;
       case "duplicar": {
         const hijos = hijosPorPadre(S.tareas);

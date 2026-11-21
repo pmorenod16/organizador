@@ -41,6 +41,12 @@ export function enfoque(ui) {
       ${!parado && e.modo !== "foco" ? `<button class="btn" data-p="saltar">Saltar</button>` : ""}
     </div>
 
+    ${ui.sesion && t && ui.sesion.tareaId === t.id ? (() => {
+      const s = ui.sesion, hechos = focosHoy.filter(f => f.tareaId === t.id && f.tipo === "pomodoro").length;
+      const queda = s.fin ? Math.round((new Date(s.fin) - Date.now()) / 60000) : null;
+      const antes = s.ini && new Date(s.ini) > new Date();
+      return `<div class="sesion-foco">${!s.fin ? "Sesión de estudio" : antes ? `Sesión de <b>${s.ini.slice(11)}</b> a <b>${s.fin.slice(11)}</b>` : `Sesión hasta las <b>${s.fin.slice(11)}</b>${queda > 0 ? ` · quedan ${minutosTexto(queda)}` : " · ya ha acabado"}`}${s.pomos ? ` · ${hechos} de ${s.pomos} 🍅` : ""}</div>`;
+    })() : ""}
     <button class="tarea-foco" data-elegir-tarea>${t ? `<span class="punto" style="background:${esc(p?.color || "var(--suave)")}"></span><span><b>${esc(t.titulo)}</b><small>${esc(p?.nombre || "Bandeja")}${t.pomos ? ` · ${t.pomos}${t.pomosEstimados ? "/" + t.pomosEstimados : ""} 🍅` : ""}</small></span>` : `<span class="suave">¿En qué vas a trabajar? Elige una tarea</span>`}<span class="cambiar">Cambiar</span></button>
     ${sigPaso ? `<div class="sig-paso"><div class="etiqueta">Siguiente paso</div>
       <ul class="pasos foco">${pasos.map(s => `<li class="${s.hecha ? "hecha" : ""} ${s === sigPaso ? "actual" : ""}"><button class="check" data-sub-check="${esc(s.id)}" style="--c:${colorPrioridad(s.prioridad)}"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9"/></svg></button><span>${esc(s.titulo)}</span></li>`).join("")}</ul></div>` : t && pasos.length ? `<p class="suave centrado">✅ Todos los pasos hechos. ¿Marcas la tarea? <button class="enlace" data-acabar-tarea="${esc(t.id)}">Marcar hecha</button></p>` : ""}
