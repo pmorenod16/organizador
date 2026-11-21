@@ -95,7 +95,9 @@ export function anadir(contexto = {}) {
   const micro = el.querySelector("[data-voz]");
   const dictar = async () => {
     if (micro.classList.contains("escuchando")) { Voz.parar(); return; }
-    micro.classList.add("escuchando"); el.querySelector("[data-truco]").textContent = "Escuchando… di la tarea con su fecha, hora, prioridad y asignatura.";
+    micro.classList.add("escuchando"); el.classList.add("dictando");
+    el.querySelector("[data-truco]").innerHTML = `<span class="ondas"><i></i><i></i><i></i><i></i><i></i></span> Te escucho… di la tarea con su fecha, hora, prioridad y asignatura. Toca el micro para terminar.`;
+    if (!ta.value) ta.placeholder = "Habla…";
     try {
       const texto = await Voz.escuchar({ alParcial: x => { ta.value = x; pintar(); } });
       if (!texto) { toast(Voz.MENSAJES.silencio); return; }
@@ -105,7 +107,8 @@ export function anadir(contexto = {}) {
     } catch (e) {
       toast(Voz.MENSAJES[e.message] || "No se ha podido usar el micrófono (" + e.message + ").", e.message === "apk-viejo" ? { accion: "Descargar", alPulsar: () => (location.href = "https://github.com/pmorenod16/organizador/releases/download/tasca/tasca.apk"), ms: 9000 } : {});
     } finally {
-      micro.classList.remove("escuchando"); el.querySelector("[data-truco]").textContent = "Pulsa el micro para dictar otra, o escribe.";
+      micro.classList.remove("escuchando"); el.classList.remove("dictando"); ta.placeholder = "Nombre de la tarea";
+      el.querySelector("[data-truco]").textContent = "Pulsa el micro para dictar otra, o escribe.";
     }
   };
   micro?.addEventListener("click", dictar);

@@ -651,3 +651,10 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 @keyframes latir { 0%, 100% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--resalte) 45%, transparent); } 50% { box-shadow: 0 0 0 10px transparent; } }
 .fab { touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .toast { width: max-content; } .toast span { min-width: 0; }
+/* escucha propia (sin la ventana de Google) */
+.ondas { display: inline-flex; gap: 3px; align-items: center; height: 14px; margin-right: 6px; vertical-align: -2px; }
+.ondas i { width: 3px; height: 100%; border-radius: 2px; background: var(--resalte); animation: onda 0.9s ease-in-out infinite; }
+.ondas i:nth-child(2) { animation-delay: .12s; } .ondas i:nth-child(3) { animation-delay: .24s; } .ondas i:nth-child(4) { animation-delay: .36s; } .ondas i:nth-child(5) { animation-delay: .48s; }
+@keyframes onda { 0%, 100% { transform: scaleY(.3); } 50% { transform: scaleY(1); } }
+.hoja.dictando .rapido textarea[name=t] { color: var(--texto); }
+.hoja.dictando .truco { color: var(--texto); }

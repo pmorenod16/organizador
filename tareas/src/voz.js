@@ -1,5 +1,6 @@
 // Dictar tareas con la voz. En la web usa el reconocimiento del navegador (Chrome, Edge, Safari);
 // en el APK, el de Android (plugin @capacitor-community/speech-recognition), porque el navegador interno no lo trae.
+// En los dos casos la escucha se ve en la pantalla de Tasca (sin la ventana de Google).
 import { esNativo, llamar } from "./nativo.js";
 
 const SR = () => window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -20,8 +21,29 @@ export async function escuchar({ alParcial } = {}) {
       const q = await llamar("SpeechRecognition", "requestPermissions");
       if (q.speechRecognition !== "granted") throw new Error("sin-permiso");
     }
-    const r = await llamar("SpeechRecognition", "start", { language: "es-ES", maxResults: 1, prompt: "Di la tarea", popup: true, partialResults: false });
-    return r?.matches?.[0] || null;
+    // Sin la ventana de Google: se escucha por debajo y el texto sale en nuestra propia pantalla, como en la web.
+    // Android avisa del final de la voz antes del resultado definitivo, así que se espera un poco a que llegue;
+    // y si se queda callado (o no se entiende nada) se termina solo.
+    return new Promise(async (ok, mal) => {
+      let texto = "", acabado = false, espera = 0;
+      const manejadores = [];
+      const terminar = () => {
+        if (acabado) return; acabado = true;
+        clearTimeout(espera); clearTimeout(limite);
+        manejadores.forEach(h => { try { h.remove(); } catch {} });
+        llamar("SpeechRecognition", "stop").catch(() => {});
+        actual = null; ok(texto.trim() || null);
+      };
+      const esperar = ms => { clearTimeout(espera); espera = setTimeout(terminar, ms); };
+      const limite = setTimeout(terminar, 30000);
+      try {
+        manejadores.push(await llamar("SpeechRecognition", "addListener", "partialResults", d => { const m = d?.matches?.[0]; if (m) { texto = m; alParcial?.(texto); esperar(2500); } }));
+        manejadores.push(await llamar("SpeechRecognition", "addListener", "listeningState", d => { if (d?.status === "stopped") esperar(1200); }));
+        actual = { stop: () => esperar(900) };
+        esperar(8000); // si en 8 s no se oye nada
+        await llamar("SpeechRecognition", "start", { language: "es-ES", maxResults: 1, popup: false, partialResults: true });
+      } catch (e) { acabado = true; clearTimeout(espera); clearTimeout(limite); manejadores.forEach(h => { try { h.remove(); } catch {} }); actual = null; mal(e); }
+    });
   }
   const C = SR(); if (!C) throw new Error("sin-voz");
   return new Promise((ok, mal) => {
