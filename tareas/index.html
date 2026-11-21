@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="theme-color" content="#F7F5F2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#17181C" media="(prefers-color-scheme: dark)">
+<meta name="description" content="Tareas, calendario y Pomodoro para estudiar">
+<title>Tasca</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="styles.css?v=1">
+</head>
+<body>
+<main id="carga" class="pantalla centro">
+  <img src="icon.svg" alt="" width="72" height="72" class="latido">
+  <p id="cargaTexto">Cargando…</p>
+  <p id="cargaError" class="error"></p>
+</main>
+
+<main id="login" class="pantalla centro" hidden>
+  <img src="icon.svg" alt="" width="84" height="84">
+  <h1>Tasca</h1>
+  <p class="suave">Tus tareas, tu calendario y tu Pomodoro.<br>Gratis y tuyo.</p>
+  <button id="btnGoogle" class="btn primario">Entrar con Google</button>
+  <p id="loginError" class="error"></p>
+</main>
+
+<main id="sinAcceso" class="pantalla centro" hidden>
+  <h1>Esta cuenta no tiene acceso</h1>
+  <p class="suave">Tasca usa la misma cuenta que el Organizador. Entra con esa cuenta de Google.</p>
+  <p class="uid"><code id="uidTexto"></code></p>
+  <button id="btnSalir" class="btn">Cambiar de cuenta</button>
+</main>
+
+<div id="app" hidden>
+  <aside id="menu" class="menu" aria-label="Menú"></aside>
+  <div id="velo" class="velo"></div>
+  <div class="principal">
+    <header class="barra-movil">
+      <button id="btnMenu" class="icono" aria-label="Abrir menú"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
+      <a href="#/buscar" class="icono" aria-label="Buscar"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></a>
+    </header>
+    <section id="vista"></section>
+  </div>
+  <div id="miniFoco" class="mini-foco" hidden></div>
+  <button id="btnAnadir" class="fab" aria-label="Añadir tarea (tecla Q)"><svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+  <nav id="abajo" class="abajo" aria-label="Secciones">
+    <a href="#/hoy"><span>☀️</span>Hoy</a>
+    <a href="#/proximos"><span>📆</span>Próximos</a>
+    <a href="#/calendario"><span>🗓️</span>Calendario</a>
+    <a href="#/enfoque"><span>🍅</span>Enfoque</a>
+    <a href="#/estadisticas"><span>📊</span>Datos</a>
+  </nav>
+</div>
+
+<div id="toast" class="toast" role="status" hidden></div>
+<script type="module" src="src/main.js?v=1"></script>
+</body>
+</html>

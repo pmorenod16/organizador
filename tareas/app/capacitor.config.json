@@ -1,0 +1,15 @@
+{
+  "appId": "io.github.pmorenod16.tasca",
+  "appName": "Tasca",
+  "webDir": "www",
+  "server": {
+    "url": "https://pmorenod16.github.io/organizador/tareas/",
+    "androidScheme": "https",
+    "allowNavigation": ["pmorenod16.github.io", "*.firebaseapp.com", "*.googleapis.com", "accounts.google.com", "api.github.com"]
+  },
+  "android": { "backgroundColor": "#F7F5F2" },
+  "plugins": {
+    "FirebaseAuthentication": { "skipNativeAuth": true, "providers": ["google.com"] },
+    "LocalNotifications": { "iconColor": "#D2541B" }
+  }
+}

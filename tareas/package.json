@@ -1,0 +1,6 @@
+{
+  "name": "tasca",
+  "private": true,
+  "type": "module",
+  "scripts": { "test": "TZ=Europe/Madrid node --test test/*.test.js" }
+}
