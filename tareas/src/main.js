@@ -9,10 +9,12 @@ import * as A from "./ajustes.js";
 import * as P from "./pomodoro.js";
 import { anadir, abrirTarea } from "./editor.js";
 import { alternarAbierta, icono } from "./lista.js";
+import { menu, seccionesDe } from "./selectores.js";
+import { pedirTexto, confirmar } from "./ui.js";
 import { reprogramar } from "./avisos.js";
 import { ruido, volumenRuido } from "./sonido.js";
 import { esNativo, alTocarAviso } from "./nativo.js";
-import { hoyISO, sumarDias } from "./fechas.js";
+import { hoyISO, sumarDias, lunesDe } from "./fechas.js";
 import { deVista } from "./logica.js";
 import * as Act from "./actualizar.js";
 
@@ -86,15 +88,17 @@ Au.onAuthStateChanged(auth, user => {
 });
 
 // ---------- estado de la interfaz ----------
-const UI = { ruta: "hoy", arg: null, cal: {}, verHechas: {}, q: "", ruido: "", volumen: 0.5, pantallaCompleta: false };
+const UI = { ruta: "hoy", arg: null, cal: {}, verHechas: {}, q: "", ruido: "", volumen: 0.5, pantallaCompleta: false, modoProximo: "lista", semana: null };
 try { Object.assign(UI, JSON.parse(localStorage.getItem("tasca.ui") || "{}"), { ruido: "", pantallaCompleta: false }); } catch {}
-const guardarUI = () => { try { localStorage.setItem("tasca.ui", JSON.stringify({ cal: UI.cal, verHechas: UI.verHechas, volumen: UI.volumen })); } catch {} };
+const guardarUI = () => { try { localStorage.setItem("tasca.ui", JSON.stringify({ cal: UI.cal, verHechas: UI.verHechas, volumen: UI.volumen, modoProximo: UI.modoProximo })); } catch {} };
 
 function leerRuta() {
   const [r, arg] = (location.hash.replace(/^#\/?/, "") || "hoy").split("/");
   UI.ruta = r || "hoy"; UI.arg = arg ? decodeURIComponent(arg) : null;
+  if (UI.ruta === "calendario") { UI.ruta = "proximos"; UI.arg = "calendario"; }
+  if (UI.ruta === "proximos" && UI.arg) { UI.modoProximo = UI.arg === "calendario" ? "calendario" : "lista"; guardarUI(); }
 }
-window.addEventListener("hashchange", () => { leerRuta(); pintar(); $("#vista").scrollTop = 0; window.scrollTo(0, 0); cerrarMenu(); });
+window.addEventListener("hashchange", () => { leerRuta(); pintar(); window.scrollTo(0, 0); });
 
 D.alCambiar((s, err) => {
   if (err) { if (!s.listo) fallo("No se pueden leer los datos: " + (err.code || err.message)); else toast("Sin permiso o sin conexión con la base de datos"); return; }
@@ -106,7 +110,6 @@ D.alCambiar((s, err) => {
 });
 
 // ---------- pintar ----------
-const RUTAS = { hoy: "Hoy", proximos: "Próximos", calendario: "Calendario", enfoque: "Enfoque", estadisticas: "Estadísticas", bandeja: "Bandeja", buscar: "Buscar", ajustes: "Ajustes", hechas: "Hechas" };
 function pintar() {
   if (!S.listo) return;
   const v = $("#vista");
@@ -114,8 +117,8 @@ function pintar() {
   const buscando = document.activeElement?.dataset?.buscar !== undefined;
   let html;
   switch (UI.ruta) {
-    case "proximos": html = V.proximos(); break;
-    case "calendario": html = V.calendario(UI.cal); break;
+    case "proximos": html = V.proximos(UI); break;
+    case "explorar": html = V.explorar(); break;
     case "bandeja": html = V.bandeja(); break;
     case "proyecto": html = V.proyecto(UI.arg, { verHechas: !!UI.verHechas[UI.arg] }); break;
     case "buscar": if (buscando && $("#resultados")) { $("#resultados").innerHTML = V.resultados(UI.q); pintarMenu(); return; } html = V.buscar(UI.q); break;
@@ -127,7 +130,7 @@ function pintar() {
   }
   v.innerHTML = html;
   v.dataset.ruta = UI.ruta;
-  $("#btnAnadir").hidden = ["enfoque", "estadisticas", "ajustes"].includes(UI.ruta);
+  $("#btnAnadir").hidden = ["enfoque", "estadisticas", "ajustes", "hechas"].includes(UI.ruta);
   if (UI.ruta === "buscar") { const i = $("[data-buscar]", v); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
   if (UI.ruta === "enfoque") tic(v);
   pintarMenu();
@@ -135,25 +138,31 @@ function pintar() {
 }
 
 function contar(vista, extra) { return deVista(vista, S.tareas, hoyISO(), extra).length; }
+const PESTANAS = [["bandeja", "Bandeja", "bandeja"], ["hoy", "Hoy", "hoy"], ["proximos", "Próximo", "proximo"], ["buscar", "Buscar", "buscar"], ["explorar", "Explorar", "explorar"]];
+const pestanaDe = r => (["proyecto", "enfoque", "estadisticas", "hechas", "ajustes"].includes(r) ? "explorar" : r);
 function pintarMenu() {
   const actual = UI.ruta === "proyecto" ? "proyecto/" + UI.arg : UI.ruta;
-  const it = (ruta, nombre, ico, n) => `<a href="#/${ruta}" class="${actual === ruta ? "on" : ""}">${ico}<span>${nombre}</span>${n ? `<small>${n}</small>` : ""}</a>`;
+  const it = (ruta, nombre, ico, n, color = "") => `<a href="#/${ruta}" class="${actual === ruta ? "on" : ""}"><span class="ico-m" style="${color ? "color:" + color : ""}">${icono(ico)}</span><span>${nombre}</span>${n ? `<small>${n}</small>` : ""}</a>`;
   const tarde = S.tareas.filter(t => !t.hecha && t.fecha && t.fecha < hoyISO()).length;
+  const nHoy = contar("hoy");
   $("#menu").innerHTML = `
-    <div class="marca"><img src="icon.svg" alt="" width="28" height="28"><b>Tasca</b></div>
+    <div class="marca"><img src="icon.svg" alt="" width="26" height="26"><b>${esc(usuario?.displayName?.split(" ")[0] || "Tasca")}</b></div>
+    <button class="anadir-menu" data-anadir-menu><span>${icono("mas")}</span>Añadir tarea</button>
     <nav>
-      ${it("hoy", "Hoy", "☀️", contar("hoy") ? `<span class="${tarde ? "rojo" : ""}">${contar("hoy")}</span>` : "")}
-      ${it("proximos", "Próximos", "📆", contar("proximos"))}
-      ${it("calendario", "Calendario", "🗓️")}
-      ${it("bandeja", "Bandeja de entrada", "📥", contar("bandeja"))}
-      ${it("enfoque", "Enfoque", "🍅")}
-      ${it("estadisticas", "Estadísticas", "📊")}
-      ${it("buscar", "Buscar", "🔎")}
+      ${it("buscar", "Buscar", "buscar")}
+      ${it("bandeja", "Bandeja de entrada", "bandeja", contar("bandeja"), "#1C7ED6")}
+      ${it("hoy", "Hoy", "hoy", nHoy ? `<span class="${tarde ? "rojo" : ""}">${nHoy}</span>` : "", "var(--verde)")}
+      ${it("proximos", "Próximo", "proximo", "", "#7048E8")}
+      ${it("enfoque", "Enfoque", "tomate", "", "var(--acento)")}
+      ${it("estadisticas", "Estadísticas", "grafica", "", "#1098AD")}
+      ${it("hechas", "Completadas", "hecho", "", "var(--suave)")}
     </nav>
-    <h3>Proyectos <button class="icono peque" data-nuevo-proyecto aria-label="Nuevo proyecto">+</button></h3>
-    <nav>${S.proyectos.filter(p => !p.archivado).map(p => it("proyecto/" + p.id, esc(p.nombre), `<i class="punto" style="background:${esc(p.color)}"></i>`, contar("proyecto", { proyectoId: p.id }))).join("") || `<p class="suave peque">Crea uno por asignatura o importa tus CSV de Todoist en Ajustes.</p>`}</nav>
-    <nav class="pie-menu">${it("ajustes", "Ajustes", "⚙️")}</nav>`;
-  $$("#abajo a").forEach(a => a.classList.toggle("on", a.getAttribute("href") === "#/" + UI.ruta));
+    <h3>Mis proyectos <button class="icono peque" data-nuevo-proyecto aria-label="Añadir proyecto">${icono("mas")}</button></h3>
+    <nav>${S.proyectos.filter(p => !p.archivado).map(p => it("proyecto/" + p.id, esc(p.nombre), "almohadilla", contar("proyecto", { proyectoId: p.id }), p.color)).join("") || `<p class="suave peque">Crea uno por asignatura o importa tus CSV de Todoist.</p>`}
+      <button class="enlace-menu" data-importar-abrir>${icono("importar")} Importar CSV de Todoist</button></nav>
+    <nav class="pie-menu">${it("ajustes", "Ajustes", "ajustes")}</nav>`;
+  const pes = pestanaDe(UI.ruta);
+  $("#abajo").innerHTML = PESTANAS.map(([r, n, i]) => `<a href="#/${r}" class="${pes === r ? "on" : ""}">${icono(i)}<span>${n}</span>${r === "hoy" && nHoy ? `<i class="globo ${tarde ? "rojo" : ""}">${nHoy}</i>` : ""}</a>`).join("");
 }
 
 function pintarMiniFoco() {
@@ -164,20 +173,18 @@ function pintarMiniFoco() {
   el.innerHTML = `<a href="#/enfoque"><b data-mini>${P.formato(P.tiempo())}</b> <span>${esc(e.tipo === "crono" ? "Cronómetro" : P.NOMBRES[e.modo])}${t ? " · " + esc(t.titulo) : ""}</span></a><button class="icono" data-mini-p="${e.estado === "corriendo" ? "pausar" : "reanudar"}" aria-label="${e.estado === "corriendo" ? "Pausa" : "Seguir"}">${e.estado === "corriendo" ? "⏸" : "▶"}</button>`;
 }
 
-// ---------- menú lateral (móvil) ----------
-const abrirMenu = () => document.body.classList.add("menu-abierto");
-const cerrarMenu = () => document.body.classList.remove("menu-abierto");
-$("#btnMenu").onclick = abrirMenu;
-$("#velo").onclick = cerrarMenu;
 
 // ---------- añadir ----------
 function contextoAnadir() {
   if (UI.ruta === "proyecto") return { proyectoId: UI.arg };
-  if (UI.ruta === "calendario") return { fecha: UI.cal.dia || hoyISO() };
+  if (UI.ruta === "proximos") return { fecha: UI.modoProximo === "calendario" ? UI.cal.dia || hoyISO() : hoyISO() };
   if (UI.ruta === "hoy") return { fecha: hoyISO() };
   return {};
 }
 $("#btnAnadir").onclick = () => anadir(contextoAnadir());
+let destinoImportar = null;
+const abrirImportar = (destino = null) => { destinoImportar = destino; $("#archivoImportar").click(); };
+$("#archivoImportar").onchange = e => { const x = e.target; if (x.files.length) A.importar([...x.files], destinoImportar); x.value = ""; };
 document.addEventListener("keydown", e => {
   if (hayHoja() || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName) || e.ctrlKey || e.metaKey || e.altKey) return;
   if (e.key === "q" || e.key === "n" || e.key === "+") { e.preventDefault(); anadir(contextoAnadir()); }
@@ -227,6 +234,15 @@ v.addEventListener("click", async e => {
   if (t && acc === "plegar") { alternarAbierta(id); pintar(); return; }
   if (t && acc === "foco") return alFoco(id);
   const d = b.dataset;
+  if (d.anadir !== undefined) { let c = {}; try { c = JSON.parse(d.anadir); } catch {} return anadir(c); }
+  if (d.importarAbrir !== undefined) return abrirImportar();
+  if (d.modoProx) { UI.modoProximo = d.modoProx; guardarUI(); history.replaceState(null, "", "#/proximos/" + d.modoProx); pintar(); return; }
+  if (d.semana !== undefined) { const n = Number(d.semana); UI.semana = n ? sumarDias(UI.semana && UI.semana >= lunesDe(hoyISO()) ? UI.semana : lunesDe(hoyISO()), 7 * n) : null; pintar(); return; }
+  if (d.irDia) { const g = document.getElementById("d-" + d.irDia); if (g) g.scrollIntoView({ behavior: "smooth", block: "start" }); else anadir({ fecha: d.irDia }); return; }
+  if (d.menuVista !== undefined) return menuVista();
+  if (d.menuProyecto) return menuProyecto(d.menuProyecto);
+  if (d.menuSeccion) return menuSeccion(UI.arg, d.menuSeccion);
+  if (d.nuevaSeccion) return nuevaSeccion(d.nuevaSeccion);
   if (d.foco) return alFoco(d.foco);
   if (d.reprogramar) { for (const x of S.tareas.filter(x => !x.hecha && x.fecha && x.fecha < hoyISO())) D.cambiarTarea(x.id, { fecha: hoyISO() }); toast("Pasadas a hoy"); return; }
   if (d.anadirFecha) return anadir({ fecha: d.anadirFecha });
@@ -268,7 +284,68 @@ v.addEventListener("input", e => {
   if (x.dataset.buscar !== undefined) { UI.q = x.value; pintar(); }
   if (x.dataset.volumen !== undefined) { UI.volumen = Number(x.value); volumenRuido(UI.volumen); guardarUI(); }
 });
-$("#menu").addEventListener("click", e => { if (e.target.closest("[data-nuevo-proyecto]")) { cerrarMenu(); A.editarProyecto(null); } });
+$("#menu").addEventListener("click", e => {
+  if (e.target.closest("[data-nuevo-proyecto]")) A.editarProyecto(null);
+  if (e.target.closest("[data-anadir-menu]")) anadir(contextoAnadir());
+  if (e.target.closest("[data-importar-abrir]")) abrirImportar();
+});
+
+// ---------- menús ⋯ ----------
+async function menuVista() {
+  const tarde = S.tareas.filter(t => !t.hecha && t.fecha && t.fecha < hoyISO());
+  const r = await menu([
+    ...(tarde.length ? [{ id: "reprogramar", texto: `Pasar las ${tarde.length} vencidas a hoy`, icono: "hoy" }] : []),
+    { id: "hechas", texto: "Ver completadas", icono: "hecho" },
+    { id: "importar", texto: "Importar CSV de Todoist", icono: "importar" },
+    { id: "ajustes", texto: "Ajustes", icono: "ajustes" },
+  ]);
+  if (r === "reprogramar") { for (const x of tarde) D.cambiarTarea(x.id, { fecha: hoyISO() }); toast("Pasadas a hoy"); }
+  else if (r === "hechas") location.hash = "#/hechas";
+  else if (r === "importar") abrirImportar();
+  else if (r === "ajustes") location.hash = "#/ajustes";
+}
+async function menuProyecto(id) {
+  const p = S.proyectos.find(x => x.id === id); if (!p) return;
+  const r = await menu([
+    { id: "editar", texto: "Editar proyecto", icono: "almohadilla" },
+    { id: "seccion", texto: "Añadir sección", icono: "seccion" },
+    { id: "hechas", texto: UI.verHechas[id] ? "Ocultar completadas" : "Mostrar completadas", icono: "hecho" },
+    { id: "importar", texto: "Importar CSV de Todoist aquí", icono: "importar" },
+    { id: "foco", texto: "Pomodoro con la siguiente tarea", icono: "tomate" },
+    { id: "archivar", texto: p.archivado ? "Desarchivar" : "Archivar", icono: "carpeta" },
+    { id: "borrar", texto: "Eliminar proyecto", icono: "cerrar", peligro: true },
+  ], p.nombre);
+  if (r === "editar") A.editarProyecto(id, () => (location.hash = "#/explorar"));
+  else if (r === "seccion") nuevaSeccion(id);
+  else if (r === "hechas") { UI.verHechas[id] = !UI.verHechas[id]; guardarUI(); pintar(); }
+  else if (r === "importar") abrirImportar(id);
+  else if (r === "foco") { const t = S.tareas.filter(x => x.proyectoId === id && !x.hecha && !x.padreId).sort((a, b) => (a.fecha || "9") < (b.fecha || "9") ? -1 : (a.fecha || "9") > (b.fecha || "9") ? 1 : (a.orden ?? 0) - (b.orden ?? 0))[0]; t ? alFoco(t.id) : toast("No hay tareas pendientes"); }
+  else if (r === "archivar") { D.guardarProyecto({ ...p, archivado: !p.archivado }); toast(p.archivado ? "Desarchivado" : "Archivado"); }
+  else if (r === "borrar") {
+    const n = S.tareas.filter(t => t.proyectoId === id).length;
+    if (await confirmar(`¿Eliminar «${p.nombre}»${n ? ` y sus ${n} tareas` : ""}? No se puede deshacer.`, { si: "Eliminar", peligro: true })) { await D.borrarProyecto(id); toast("Proyecto eliminado"); location.hash = "#/explorar"; }
+  }
+}
+async function nuevaSeccion(pid) {
+  const p = S.proyectos.find(x => x.id === pid); if (!p) return;
+  const n = await pedirTexto("Nombre de la sección", "", { boton: "Añadir sección", placeholder: "p. ej. Exámenes del dossier" });
+  if (!n || seccionesDe(pid).includes(n)) return;
+  D.guardarProyecto({ ...p, secciones: [...seccionesDe(pid), n] });
+}
+async function menuSeccion(pid, sec) {
+  const p = S.proyectos.find(x => x.id === pid); if (!p) return;
+  const r = await menu([{ id: "anadir", texto: "Añadir tarea", icono: "mas" }, { id: "renombrar", texto: "Cambiar nombre", icono: "seccion" }, { id: "borrar", texto: "Eliminar sección (las tareas se quedan)", icono: "cerrar", peligro: true }], sec);
+  const tareas = S.tareas.filter(t => t.proyectoId === pid && t.seccion === sec);
+  if (r === "anadir") anadir({ proyectoId: pid, seccion: sec });
+  else if (r === "renombrar") {
+    const n = await pedirTexto("Nuevo nombre", sec); if (!n || n === sec) return;
+    D.guardarProyecto({ ...p, secciones: seccionesDe(pid).map(x => (x === sec ? n : x)) });
+    for (const t of tareas) D.cambiarTarea(t.id, { seccion: n });
+  } else if (r === "borrar") {
+    D.guardarProyecto({ ...p, secciones: seccionesDe(pid).filter(x => x !== sec) });
+    for (const t of tareas) D.cambiarTarea(t.id, { seccion: null });
+  }
+}
 
 // arrastrar tareas a otro día del calendario (ordenador)
 v.addEventListener("dragstart", e => { const li = e.target.closest?.(".tarea"); if (li) { e.dataTransfer.setData("text/tarea", li.dataset.id); e.dataTransfer.effectAllowed = "move"; } });

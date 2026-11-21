@@ -1,85 +1,67 @@
-// Vistas de listas (Hoy, Próximos, Bandeja, Proyecto, Buscar, Hechas) y Calendario.
+// Vistas, organizadas como Todoist: Bandeja, Hoy, Próximo (lista o calendario), Buscar, Explorar y Proyectos.
 import { S } from "./datos.js";
 import { esc } from "./ui.js";
-import { filas, vacio, proyectoDe, icono } from "./lista.js";
-import { deVista, agruparPorDia, hijosPorPadre, siguienteTarea, compararManual, comparar } from "./logica.js";
-import { hoyISO, sumarDias, fechaLarga, fechaBonita, DIAS_CORTOS, MESES, lunesDe, diaSemana, aDate } from "./fechas.js";
+import { filas, vacio, proyectoDe, icono, filaAnadir } from "./lista.js";
+import { deVista, hijosPorPadre, compararManual, comparar } from "./logica.js";
+import { hoyISO, sumarDias, DIAS_CORTOS, DIAS, MESES, lunesDe, diaSemana, aDate } from "./fechas.js";
+import { seccionesDe } from "./selectores.js";
 
-const cab = (titulo, sub = "", extra = "") => `<header class="vista-cab"><div><h1>${titulo}</h1>${sub ? `<p class="suave">${sub}</p>` : ""}</div>${extra}</header>`;
-const horaAhora = () => new Date().toTimeString().slice(0, 5);
+/** Cabecera: título grande, y a la derecha los botones (atrás a la izquierda si hace falta) */
+export const cab = (titulo, { sub = "", atras = "", acciones = "" } = {}) =>
+  `<header class="vista-cab">${atras ? `<a class="icono atras" href="${atras}" aria-label="Atrás">${icono("atras")}</a>` : ""}<div class="tit"><h1>${titulo}</h1>${sub ? `<p class="suave">${sub}</p>` : ""}</div><div class="acc-cab">${acciones}</div></header>`;
+const botonMenu = (dato, etiqueta = "Opciones de la vista") => `<button class="icono" ${dato} aria-label="${etiqueta}">${icono("puntos")}</button>`;
+const diaTitulo = f => { const [, m, d] = f.split("-").map(Number); return `${d} ${MESES[m - 1].slice(0, 3)} · ${DIAS[diaSemana(f)]}`; };
 
+// ---------------- Hoy ----------------
 export function hoy() {
   const h = hoyISO();
   const l = deVista("hoy", S.tareas, h);
   const tarde = l.filter(t => t.fecha < h), deHoy = l.filter(t => t.fecha === h);
   const hechasHoy = S.tareas.filter(t => t.hecha && t.hechaEn && new Date(t.hechaEn).toDateString() === new Date().toDateString() && !t.padreId).length;
-  const sig = siguienteTarea(S.tareas, h, horaAhora());
-  const pomosHoy = S.focos.filter(f => new Date(f.inicio).toDateString() === new Date().toDateString() && f.tipo === "pomodoro").length;
-  const total = deHoy.length + hechasHoy;
-  return cab("Hoy", esc(fechaLarga(h)).replace(/^./, c => c.toUpperCase()), `<div class="anillo-hoy" title="Tareas de hoy hechas"><svg viewBox="0 0 36 36"><circle cx="18" cy="18" r="15" class="fondo-anillo"/><circle cx="18" cy="18" r="15" class="valor-anillo" style="stroke-dasharray:${total ? (94.2 * hechasHoy / total).toFixed(1) : 0} 94.2"/></svg><span>${hechasHoy}/${total}</span></div>`) +
-    (sig ? `<section class="ahora">
-      <div class="etiqueta">Ahora toca</div>
-      <div class="ahora-fila"><div><div class="titulo">${esc(sig.titulo)}</div><div class="suave-claro">${esc([proyectoDe(sig.proyectoId)?.nombre, sig.hora].filter(Boolean).join(" · "))}</div></div>
-      <button class="btn claro" data-foco="${esc(sig.id)}">${icono("play")} Empezar</button></div>
-      <div class="ahora-pie">${icono("tomate")} ${pomosHoy}/${S.ajustes.objetivo || 8} pomodoros hoy</div>
-    </section>` : "") +
-    (tarde.length ? `<h2 class="grupo tarde-t">Atrasadas <span>${tarde.length}</span><button class="enlace" data-reprogramar="hoy">Pasar a hoy</button></h2><ul class="lista">${filas(tarde)}</ul>` : "") +
-    (deHoy.length ? `<h2 class="grupo">Hoy <span>${deHoy.length}</span></h2><ul class="lista">${filas(deHoy, { fecha: false })}</ul>` : "") +
-    (!l.length ? vacio(hechasHoy ? "¡Todo hecho por hoy!" : "Nada para hoy", hechasHoy ? "Buen trabajo. Descansa o adelanta algo de Próximos." : "Añade una tarea con el botón +.") : "");
+  return cab("Hoy", { sub: l.length ? `${icono("hecho")} ${l.length} ${l.length === 1 ? "tarea" : "tareas"}` : "", acciones: botonMenu("data-menu-vista") }) +
+    (tarde.length ? `<h2 class="grupo tarde-t">Vencidas <span>${tarde.length}</span><button class="enlace" data-reprogramar="hoy">Reprogramar</button></h2><ul class="lista">${filas(tarde)}</ul>` : "") +
+    `<h2 class="grupo">${esc(diaTitulo(h))} · Hoy</h2>` +
+    (deHoy.length ? `<ul class="lista">${filas(deHoy, { fecha: false })}</ul>` : "") + filaAnadir({ fecha: h }) +
+    (!l.length ? vacio(hechasHoy ? "¡Todo hecho por hoy!" : "Disfruta del día", hechasHoy ? `Has completado ${hechasHoy} ${hechasHoy === 1 ? "tarea" : "tareas"}.` : "No tienes nada para hoy.") : "");
 }
 
-export function proximos() {
-  const h = hoyISO();
-  const grupos = agruparPorDia(deVista("proximos", S.tareas, h, { dias: 14 }), h);
-  // franja de 14 días para saltar
-  const dias = Array.from({ length: 14 }, (_, i) => sumarDias(h, i));
-  const cuenta = new Map(grupos.map(g => [g.fecha, g.tareas.length]));
-  return cab("Próximos", "Las dos próximas semanas") +
-    `<div class="franja">${dias.map(d => `<a href="#d-${d}" class="${d === h ? "hoy" : ""}"><small>${DIAS_CORTOS[diaSemana(d)]}</small><b>${Number(d.slice(8))}</b>${cuenta.get(d) ? `<i>${cuenta.get(d)}</i>` : "<i></i>"}</a>`).join("")}</div>` +
-    (grupos.length ? grupos.map(g => `<h2 class="grupo ${g.fecha === "vencidas" ? "tarde-t" : ""}" id="d-${g.fecha}">${g.fecha === "vencidas" ? "Atrasadas" : esc(fechaBonita(g.fecha, h)) + ` <small class="suave">${esc(fechaLarga(g.fecha))}</small>`} <span>${g.tareas.length}</span><button class="enlace" data-anadir-fecha="${g.fecha === "vencidas" ? h : g.fecha}">+</button></h2><ul class="lista">${filas(g.tareas, { fecha: g.fecha === "vencidas" })}</ul>`).join("") : vacio("Nada en dos semanas", "Disfruta… o planifica algo."));
-}
-
+// ---------------- Bandeja ----------------
 export function bandeja() {
   const l = deVista("bandeja", S.tareas, hoyISO());
-  return cab("Bandeja de entrada", "Lo que aún no tiene proyecto") + (l.length ? `<ul class="lista">${filas(l, { proyecto: false })}</ul>` : vacio("Bandeja vacía", "Lo que añadas sin proyecto aparecerá aquí."));
+  return cab("Bandeja de entrada", { acciones: botonMenu("data-menu-vista") }) +
+    (l.length ? `<ul class="lista">${filas(l, { proyecto: false })}</ul>` : "") + filaAnadir({}) +
+    (!l.length ? vacio("Tu bandeja está vacía", "Lo que apuntes sin proyecto llega aquí. Luego muévelo a su asignatura.") : "");
 }
 
-export function proyecto(id, { verHechas = false } = {}) {
-  const p = proyectoDe(id);
-  if (!p) return vacio("Este proyecto ya no existe");
-  const todas = S.tareas.filter(t => t.proyectoId === id);
-  const raiz = (verHechas ? todas : todas.filter(t => !t.hecha)).filter(t => !t.padreId).sort(compararManual);
-  const hijos = hijosPorPadre(S.tareas);
-  const hechas = todas.filter(t => t.hecha).length;
-  const pct = todas.length ? Math.round(100 * hechas / todas.length) : 0;
-  // por secciones, en el orden en que aparecen
-  const secciones = [];
-  for (const t of raiz) { const s = t.seccion || ""; let g = secciones.find(x => x.s === s); if (!g) secciones.push(g = { s, l: [] }); g.l.push(t); }
-  const proxima = todas.filter(t => !t.hecha && t.fecha).sort(comparar)[0];
-  return cab(`<i class="punto" style="background:${esc(p.color)}"></i>${esc(p.nombre)}`, `${hechas} de ${todas.length} hechas (pasos incluidos)${proxima ? " · siguiente: " + esc(fechaBonita(proxima.fecha)) : ""}`,
-    `<button class="icono" data-editar-proyecto="${esc(p.id)}" aria-label="Editar proyecto">⋯</button>`) +
-    `<div class="barra grande"><i style="width:${pct}%;background:${esc(p.color)}"></i></div>
-     <div class="herramientas"><label class="interruptor"><input type="checkbox" data-ver-hechas ${verHechas ? "checked" : ""}> Ver hechas</label><button class="enlace" data-anadir-proyecto="${esc(p.id)}">+ Añadir tarea</button></div>` +
-    (raiz.length ? secciones.map(g => `${g.s ? `<h2 class="grupo">${esc(g.s)} <span>${g.l.length}</span></h2>` : ""}<ul class="lista">${filas(g.l, { proyecto: false, hijos, verHechas })}</ul>`).join("") : vacio(todas.length ? "¡Proyecto terminado!" : "Proyecto vacío", todas.length ? "Todas las tareas están hechas." : "Añade tareas o importa un CSV de Todoist desde Ajustes."));
+// ---------------- Próximo ----------------
+export function proximos(ui) {
+  const h = hoyISO();
+  const modo = ui.modoProximo === "calendario" ? "calendario" : "lista";
+  const selector = `<div class="seg modo-prox"><button data-modo-prox="lista" class="${modo === "lista" ? "on" : ""}">${icono("lista")} Lista</button><button data-modo-prox="calendario" class="${modo === "calendario" ? "on" : ""}">${icono("proximo")} Calendario</button></div>`;
+  if (modo === "calendario") return calendario(ui.cal, selector);
+  const inicio = ui.semana && ui.semana >= lunesDe(h) ? ui.semana : lunesDe(h);
+  const dias = Array.from({ length: 7 }, (_, i) => sumarDias(inicio, i));
+  const [a, m] = inicio.split("-").map(Number);
+  const lista = deVista("proximos", S.tareas, h, { dias: 70 });
+  const porDia = new Map();
+  for (const t of lista) { const k = t.fecha < h ? "vencidas" : t.fecha; if (!porDia.has(k)) porDia.set(k, []); porDia.get(k).push(t); }
+  const desde = inicio < h ? h : inicio;
+  const listaDias = Array.from({ length: 14 }, (_, i) => sumarDias(desde, i));
+  const tarde = porDia.get("vencidas") || [];
+  return cab("Próximo", { acciones: selector }) +
+    `<div class="semana-nav"><b>${MESES[m - 1].replace(/^./, c => c.toUpperCase())} ${a}</b><span class="sep"></span>
+      <button class="icono" data-semana="-1" ${inicio <= lunesDe(h) ? "disabled" : ""} aria-label="Semana anterior">‹</button>
+      <button class="btn peque" data-semana="0">Hoy</button>
+      <button class="icono" data-semana="1" aria-label="Semana siguiente">›</button></div>
+     <div class="franja">${dias.map(d => `<button class="${d === h ? "hoy" : ""} ${d < h ? "pasado" : ""}" data-ir-dia="${d}"><small>${DIAS_CORTOS[diaSemana(d)]}</small><b>${Number(d.slice(8))}</b><i>${porDia.get(d)?.length ? "•" : ""}</i></button>`).join("")}</div>` +
+    (tarde.length && inicio === lunesDe(h) ? `<h2 class="grupo tarde-t">Vencidas <span>${tarde.length}</span><button class="enlace" data-reprogramar="hoy">Reprogramar</button></h2><ul class="lista">${filas(tarde)}</ul>` : "") +
+    listaDias.map(d => {
+      const ts = porDia.get(d) || [];
+      return `<h2 class="grupo" id="d-${d}">${esc(diaTitulo(d))}${d === h ? " · Hoy" : d === sumarDias(h, 1) ? " · Mañana" : ""} ${ts.length ? `<span>${ts.length}</span>` : ""}</h2>${ts.length ? `<ul class="lista">${filas(ts, { fecha: false })}</ul>` : ""}${filaAnadir({ fecha: d })}`;
+    }).join("");
 }
 
-export function buscar(q) {
-  return cab("Buscar") + `<input class="buscador" type="search" placeholder="Buscar en títulos y notas…" value="${esc(q)}" data-buscar><div id="resultados">${resultados(q)}</div>`;
-}
-export function resultados(q) {
-  const l = deVista("buscar", S.tareas, hoyISO(), { q });
-  return q ? (l.length ? `<ul class="lista">${filas(l.slice(0, 100))}</ul>` : vacio("Sin resultados")) : `<p class="suave centrado">Pulsa «/» en el ordenador para buscar desde cualquier sitio.</p>`;
-}
-
-export function hechas() {
-  const l = deVista("hechas", S.tareas, hoyISO()).filter(t => !t.padreId).slice(0, 150);
-  const grupos = new Map();
-  for (const t of l) { const k = t.hechaEn ? new Date(t.hechaEn).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" }) : "Antes"; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(t); }
-  return cab("Hechas", "Las últimas 150") + (l.length ? [...grupos].map(([k, ts]) => `<h2 class="grupo">${esc(k)} <span>${ts.length}</span></h2><ul class="lista">${filas(ts, { sinFoco: true })}</ul>`).join("") : vacio("Aún nada hecho", "¡A por la primera!"));
-}
-
-// ---------------- calendario ----------------
-export function calendario(estado) {
+export function calendario(estado, selector = "") {
   const h = hoyISO();
   const mes = estado.mes || h.slice(0, 7);
   const sel = estado.dia || h;
@@ -102,11 +84,75 @@ export function calendario(estado) {
   }
   const deSel = porDia.get(sel) || [];
   const pend = deSel.filter(t => !t.hecha), hech = deSel.filter(t => t.hecha);
-  return cab(`${MESES[m - 1].replace(/^./, c => c.toUpperCase())} <span class="suave">${a}</span>`, "", `<div class="nav-mes"><button class="icono" data-mes="-1" aria-label="Mes anterior">‹</button><button class="btn peque" data-mes="0">Hoy</button><button class="icono" data-mes="1" aria-label="Mes siguiente">›</button></div>`) +
-    `<div class="mes"><div class="sem">${DIAS_CORTOS.map(d => `<span>${d}</span>`).join("")}</div><div class="rejilla" style="--filas:${semanas}">${celdas.join("")}</div></div>
-     <h2 class="grupo">${esc(fechaBonita(sel, h))} <small class="suave">${esc(fechaLarga(sel))}</small> <span>${pend.length}</span><button class="enlace" data-anadir-fecha="${sel}">+ Añadir</button></h2>
-     ${pend.length ? `<ul class="lista">${filas(pend, { fecha: false })}</ul>` : `<p class="suave centrado">Nada pendiente este día.</p>`}
-     ${hech.length ? `<h2 class="grupo">Hechas <span>${hech.length}</span></h2><ul class="lista">${filas(hech, { fecha: false, sinFoco: true })}</ul>` : ""}
-     <p class="suave peque centrado">En el ordenador puedes arrastrar una tarea a otro día.</p>`;
+  return cab("Próximo", { acciones: selector }) +
+    `<div class="semana-nav"><b>${MESES[m - 1].replace(/^./, c => c.toUpperCase())} ${a}</b><span class="sep"></span><button class="icono" data-mes="-1" aria-label="Mes anterior">‹</button><button class="btn peque" data-mes="0">Hoy</button><button class="icono" data-mes="1" aria-label="Mes siguiente">›</button></div>
+     <div class="mes"><div class="sem">${DIAS_CORTOS.map(d => `<span>${d}</span>`).join("")}</div><div class="rejilla">${celdas.join("")}</div></div>
+     <h2 class="grupo">${esc(diaTitulo(sel))}${sel === h ? " · Hoy" : ""} ${pend.length ? `<span>${pend.length}</span>` : ""}</h2>
+     ${pend.length ? `<ul class="lista">${filas(pend, { fecha: false })}</ul>` : ""}${filaAnadir({ fecha: sel })}
+     ${hech.length ? `<h2 class="grupo">Completadas <span>${hech.length}</span></h2><ul class="lista">${filas(hech, { fecha: false, sinFoco: true })}</ul>` : ""}
+     <p class="suave peque centrado solo-pc">Puedes arrastrar una tarea a otro día.</p>`;
 }
 export const mesMas = (mes, n) => { const d = aDate(mes + "-01"); d.setMonth(d.getMonth() + n); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`; };
+
+// ---------------- Proyecto ----------------
+export function proyecto(id, { verHechas = false } = {}) {
+  const p = proyectoDe(id);
+  if (!p) return cab("Proyecto", { atras: "#/explorar" }) + vacio("Este proyecto ya no existe");
+  const todas = S.tareas.filter(t => t.proyectoId === id);
+  const raiz = (verHechas ? todas : todas.filter(t => !t.hecha)).filter(t => !t.padreId).sort(compararManual);
+  const hijos = hijosPorPadre(S.tareas);
+  const hechas = todas.filter(t => t.hecha).length;
+  const pct = todas.length ? Math.round(100 * hechas / todas.length) : 0;
+  const secs = seccionesDe(id);
+  const sinSeccion = raiz.filter(t => !t.seccion || !secs.includes(t.seccion));
+  const bloque = (s, l) => `<section class="seccion">
+      ${s ? `<h2 class="grupo sec">${esc(s)} <span>${l.length}</span><button class="icono peque" data-menu-seccion="${esc(s)}" aria-label="Opciones de la sección">${icono("puntos")}</button></h2>` : ""}
+      ${l.length ? `<ul class="lista">${filas(l, { proyecto: false, hijos, verHechas })}</ul>` : ""}
+      ${filaAnadir({ proyectoId: id, seccion: s || null })}
+    </section>`;
+  return cab(`<span style="color:${esc(p.color)}">#</span> ${esc(p.nombre)}`, { atras: "#/explorar", sub: `${pct}% completado · ${hechas}/${todas.length}`, acciones: botonMenu(`data-menu-proyecto="${esc(p.id)}"`, "Opciones del proyecto") }) +
+    `<div class="barra grande"><i style="width:${pct}%;background:${esc(p.color)}"></i></div>` +
+    bloque("", sinSeccion) + secs.map(s => bloque(s, raiz.filter(t => t.seccion === s))).join("") +
+    `<button class="fila-anadir seccion-nueva" data-nueva-seccion="${esc(id)}"><span>${icono("seccion")}</span>Añadir sección</button>` +
+    (!todas.length ? vacio("Proyecto vacío", "Añade tareas o importa tu CSV de Todoist desde el menú ⋯.") : "");
+}
+
+// ---------------- Buscar ----------------
+const sinTildes = s => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const navProyectos = ps => `<nav class="lista-nav">${ps.map(p => `<a href="#/proyecto/${esc(p.id)}"><span style="color:${esc(p.color)}">${icono("almohadilla")}</span><span>${esc(p.nombre)}</span></a>`).join("")}</nav>`;
+export function buscar(q) {
+  return cab("Buscar") + `<div class="buscador-caja">${icono("buscar")}<input class="buscador" type="search" placeholder="Tareas, descripciones, proyectos…" value="${esc(q)}" data-buscar></div><div id="resultados">${resultados(q)}</div>`;
+}
+export function resultados(q) {
+  if (!q) { const ps = S.proyectos.filter(p => !p.archivado).slice(0, 8); return ps.length ? `<h2 class="grupo">Proyectos</h2>${navProyectos(ps)}` : ""; }
+  const proys = S.proyectos.filter(p => sinTildes(p.nombre).includes(sinTildes(q)));
+  const l = deVista("buscar", S.tareas, hoyISO(), { q });
+  return (proys.length ? `<h2 class="grupo">Proyectos</h2>${navProyectos(proys)}` : "") +
+    (l.length ? `<h2 class="grupo">Tareas <span>${l.length}</span></h2><ul class="lista">${filas(l.slice(0, 100))}</ul>` : proys.length ? "" : vacio("Sin resultados", `No hay nada que contenga «${q}».`));
+}
+
+// ---------------- Completadas ----------------
+export function hechas() {
+  const l = deVista("hechas", S.tareas, hoyISO()).filter(t => !t.padreId).slice(0, 150);
+  const grupos = new Map();
+  for (const t of l) { const k = t.hechaEn ? new Date(t.hechaEn).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long" }) : "Antes"; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(t); }
+  return cab("Completadas", { atras: "#/explorar" }) + (l.length ? [...grupos].map(([k, ts]) => `<h2 class="grupo">${esc(k)} <span>${ts.length}</span></h2><ul class="lista">${filas(ts, { sinFoco: true })}</ul>`).join("") : vacio("Aún nada completado", "¡A por la primera!"));
+}
+
+// ---------------- Explorar ----------------
+export function explorar() {
+  const n = id => deVista("proyecto", S.tareas, hoyISO(), { proyectoId: id }).length;
+  const it = (href, ico, nombre, extra = "", color = "") => `<a href="${href}"><span style="${color ? "color:" + color : ""}">${icono(ico)}</span><span>${nombre}</span>${extra ? `<small>${extra}</small>` : ""}</a>`;
+  const activos = S.proyectos.filter(p => !p.archivado), archivados = S.proyectos.filter(p => p.archivado);
+  return cab("Explorar", { acciones: `<a class="icono" href="#/ajustes" aria-label="Ajustes">${icono("ajustes")}</a>` }) +
+    `<nav class="lista-nav tarjeta">
+      ${it("#/enfoque", "tomate", "Enfoque (Pomodoro)", "", "var(--acento)")}
+      ${it("#/estadisticas", "grafica", "Estadísticas", "", "#1C7ED6")}
+      ${it("#/hechas", "hecho", "Completadas", "", "var(--verde)")}
+      ${it("#/proximos/calendario", "proximo", "Calendario", "", "#7048E8")}
+    </nav>
+    <h2 class="grupo">Mis proyectos <button class="icono peque" data-nuevo-proyecto aria-label="Añadir proyecto">${icono("mas")}</button></h2>
+    <nav class="lista-nav tarjeta">${activos.map(p => it(`#/proyecto/${esc(p.id)}`, "almohadilla", esc(p.nombre), n(p.id) || "", p.color)).join("") || `<p class="suave peque relleno">Crea un proyecto por asignatura con el + o importa tus CSV de Todoist.</p>`}
+      <button class="fila-anadir dentro" data-importar-abrir><span>${icono("importar")}</span>Importar CSV de Todoist</button></nav>
+    ${archivados.length ? `<h2 class="grupo suave">Archivados</h2><nav class="lista-nav tarjeta">${archivados.map(p => it(`#/proyecto/${esc(p.id)}`, "almohadilla", esc(p.nombre), "", "var(--suave)")).join("")}</nav>` : ""}`;
+}

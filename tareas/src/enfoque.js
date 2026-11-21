@@ -23,7 +23,7 @@ export function enfoque(ui) {
   const sigPaso = pasos.find(x => !x.hecha);
   const parado = e.estado === "parado";
   return `<div class="enfoque modo-${e.modo} ${ui.pantallaCompleta ? "completa" : ""}">
-    <header class="vista-cab"><div><h1>Enfoque</h1></div>
+    <header class="vista-cab"><a class="icono atras" href="#/explorar" aria-label="Atrás">${icono("atras")}</a><div class="tit"><h1>Enfoque</h1></div>
       <div class="seg" role="tablist">${[["pomodoro", "Pomodoro"], ["crono", "Cronómetro"]].map(([k, n]) => `<button data-tipo="${k}" class="${e.tipo === k ? "on" : ""}" ${parado ? "" : "disabled"}>${n}</button>`).join("")}</div>
     </header>
     ${e.tipo === "pomodoro" ? `<div class="seg modos">${Object.entries(P.NOMBRES).map(([k, n]) => `<button data-modo="${k}" class="${e.modo === k ? "on" : ""}" ${parado ? "" : "disabled"}>${n}</button>`).join("")}</div>` : ""}
@@ -106,7 +106,7 @@ export function estadisticas() {
     const ts = S.tareas.filter(t => t.proyectoId === p.id), h = ts.filter(t => t.hecha).length;
     return `<li><span class="punto" style="background:${esc(p.color)}"></span><span class="n">${esc(p.nombre)}</span><span class="bh"><i style="width:${ts.length ? Math.round(100 * h / ts.length) : 0}%;background:${esc(p.color)}"></i></span><span>${ts.length ? Math.round(100 * h / ts.length) : 0}%</span></li>`;
   }).join("");
-  return `<header class="vista-cab"><div><h1>Estadísticas</h1><p class="suave">Para saber si vas al ritmo</p></div></header>
+  return `<header class="vista-cab"><a class="icono atras" href="#/explorar" aria-label="Atrás">${icono("atras")}</a><div class="tit"><h1>Estadísticas</h1><p class="suave">Para saber si vas al ritmo</p></div></header>
     <div class="tarjetas">
       <div class="tarjeta-dato"><b>🔥 ${racha(activos, hoy)}</b><span>días seguidos</span></div>
       <div class="tarjeta-dato"><b>${minutosTexto(minHoy)}</b><span>concentración hoy</span></div>

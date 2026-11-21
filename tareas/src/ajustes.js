@@ -7,6 +7,7 @@ import { hoyISO, fechaBonita } from "./fechas.js";
 import { normal } from "./logica.js";
 import { pedirPermiso, permisoWeb } from "./avisos.js";
 import { esNativo } from "./nativo.js";
+import { icono } from "./lista.js";
 
 export const APK_URL = "https://github.com/pmorenod16/organizador/releases/download/tasca/tasca.apk";
 
@@ -15,7 +16,7 @@ export function ajustes({ email, version }) {
   const num = (k, n, min, max, suf = "min") => `<label class="fila-ajuste"><span>${n}</span><span><input type="number" data-aj="${k}" value="${esc(a[k])}" min="${min}" max="${max}"> ${suf}</span></label>`;
   const sw = (k, n) => `<label class="fila-ajuste"><span>${n}</span><input type="checkbox" class="sw" data-aj="${k}" ${a[k] ? "checked" : ""}></label>`;
   const perm = esNativo() ? "granted" : permisoWeb();
-  return `<header class="vista-cab"><div><h1>Ajustes</h1><p class="suave">${esc(email || "")}</p></div></header>
+  return `<header class="vista-cab"><a class="icono atras" href="#/explorar" aria-label="Atrás">${icono("atras")}</a><div class="tit"><h1>Ajustes</h1><p class="suave">${esc(email || "")}</p></div></header>
   <section class="caja">
     <h2>Importar de Todoist</h2>
     <p class="suave">Elige uno o varios CSV (uno por proyecto). Las sesiones quedan como tareas con fecha y los pasos como subtareas, con sus secciones, notas y prioridades.</p>
@@ -91,7 +92,7 @@ export function editarProyecto(id, alBorrar) {
 }
 
 // ---------------- importar CSV de Todoist ----------------
-export async function importar(archivos) {
+export async function importar(archivos, destinoFijo = null) {
   const hoy = hoyISO();
   const lotes = [];
   for (const a of archivos) {
@@ -99,7 +100,7 @@ export async function importar(archivos) {
     const r = deTodoist(texto, hoy);
     const nombre = nombreDeArchivo(a.name);
     const existe = S.proyectos.find(p => normal(p.nombre) === normal(nombre));
-    lotes.push({ archivo: a.name, nombre, destino: existe ? existe.id : "nuevo", ...r });
+    lotes.push({ archivo: a.name, nombre, destino: destinoFijo || (existe ? existe.id : "nuevo"), ...r });
   }
   const el = hoja(`<div class="importar"><h2>Importar de Todoist</h2>${lotes.map((l, i) => {
     const raiz = l.tareas.filter(t => !t.padreRef), fechas = l.tareas.map(t => t.fecha).filter(Boolean).sort();
