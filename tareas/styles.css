@@ -473,3 +473,5 @@ button.fila-det:hover { background: var(--fondo); }
 .ayuda ol { padding-left: 20px; margin: 8px 0; }
 .form-proyecto label { margin-bottom: 10px; }
 .form-proyecto input { width: 100%; }
+.error-form { color: var(--rojo); font-size: .9rem; margin: 6px 0 0; min-height: 0; }
+.error-form:empty { display: none; }

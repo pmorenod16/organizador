@@ -197,24 +197,28 @@ export function editarCalendario(i) {
     ${i === "" ? `<details class="ayuda" open><summary>¿De dónde saco el enlace?</summary><ol>
       <li>En el ordenador, abre <b>calendar.google.com</b> → ⚙️ <b>Configuración</b>.</li>
       <li>A la izquierda, en «Configuración de mis calendarios», toca el calendario.</li>
-      <li>Baja hasta <b>Integrar el calendario</b> y copia la <b>Dirección secreta en formato iCal</b> (acaba en <code>.ics</code>).</li>
+      <li>Baja hasta <b>Integrar el calendario</b> y copia la <b>Dirección secreta en formato iCal</b>: la última de esa sección, que lleva <code>private-</code> y acaba en <code>.ics</code>. (La «dirección pública» y el enlace para compartir no sirven.)</li>
       <li>Pégala aquí. Repite con cada calendario que quieras ver (trabajo, gym…).</li></ol>
       <p class="suave peque">También sirven otros enlaces iCal, como el horario de la UdG o un calendario de exámenes.</p></details>` : ""}
     <label>Nombre<input name="n" value="${esc(c.nombre)}" placeholder="p. ej. Personal" required></label>
     <label>Dirección iCal<input name="u" value="${esc(c.url)}" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" required inputmode="url"></label>
     <div class="colores">${Cal.COLORES_CAL.map(x => `<button type="button" data-c="${x}" style="background:${x}" class="${x === color ? "on" : ""}" aria-label="Color"></button>`).join("")}</div>
+    <p class="error-form" data-error></p>
     <div class="botones">${i !== "" ? `<button type="button" class="btn peligro" data-quitar>Quitar</button>` : ""}<span style="flex:1"></span><button class="btn primario">${i === "" ? "Conectar" : "Guardar"}</button></div></form>`, { clase: "peque" });
   el.querySelectorAll("[data-c]").forEach(b => (b.onclick = () => { color = b.dataset.c; el.querySelectorAll("[data-c]").forEach(x => x.classList.toggle("on", x === b)); }));
   const f = $("form", el);
   f.onsubmit = async e => {
     e.preventDefault();
     const url = f.u.value.trim().replace(/^webcal:\/\//i, "https://");
-    if (!/^https:\/\/.+/i.test(url)) { toast("La dirección tiene que empezar por https://"); return; }
+    const err = el.querySelector("[data-error]"), btn = el.querySelector("button.primario");
+    err.textContent = ""; btn.disabled = true; btn.textContent = "Comprobando…";
+    const problema = url === c.url ? null : await Cal.probar(url);
+    btn.disabled = false; btn.textContent = i === "" ? "Conectar" : "Guardar";
+    if (problema) { err.textContent = problema; return; }
     const nuevo = { nombre: f.n.value.trim() || "Calendario", url, color, activo: c.activo !== false };
     if (i === "") lista.push(nuevo); else lista[Number(i)] = nuevo;
     el.cerrar();
     await D.guardarAjustes({ calendarios: lista });
-    toast("Cargando el calendario…");
     await Cal.recargar(true);
     toast(Cal.error() || "Calendario conectado");
   };

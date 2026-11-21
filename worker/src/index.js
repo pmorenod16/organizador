@@ -20,7 +20,7 @@ const MAX_BYTES = 5 * 1024 * 1024;
 
 async function calendarios(req, body, { fetchFn }) {
   const urls = (body.urls || []).filter(Boolean).map(u => String(u).trim()).slice(0, 10);
-  const fallidos = [], salida = [];
+  const fallidos = [], salida = [], motivos = {};
   await Promise.all(urls.map(async original => {
     const url = original.replace(/^webcal:\/\//i, "https://");
     try {
@@ -30,12 +30,14 @@ async function calendarios(req, body, { fetchFn }) {
       if (+(r.headers.get("Content-Length") || 0) > MAX_BYTES) throw new Error("demasiado grande");
       const texto = await r.text();
       if (texto.length > MAX_BYTES) throw new Error("demasiado grande");
+      if (!/BEGIN:VCALENDAR/i.test(texto.slice(0, 2000))) throw new Error("no es iCal");
       salida.push({ url: original, texto });
-    } catch {
+    } catch (e) {
       fallidos.push(original);
+      motivos[original] = e.message;
     }
   }));
-  return json(req, { calendarios: urls.map(u => salida.find(c => c.url === u)).filter(Boolean), fallidos: urls.filter(u => fallidos.includes(u)) });
+  return json(req, { calendarios: urls.map(u => salida.find(c => c.url === u)).filter(Boolean), fallidos: urls.filter(u => fallidos.includes(u)), motivos });
 }
 
 export function crearApp({ verificar, fetchFn = (u, o) => fetch(u, o), rutas = {} } = {}) {

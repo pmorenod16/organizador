@@ -83,3 +83,41 @@ export async function importarDelOrganizador(F, db, uid) {
   } catch { return []; }
 }
 export const hoy = hoyISO;
+
+/** Avisos para los enlaces que no son la dirección iCal (los errores más típicos al copiarla) */
+export function revisarEnlace(url) {
+  const u = url.trim();
+  if (!/^(https|webcal):\/\//i.test(u)) return "La dirección tiene que empezar por https://";
+  if (/calendar\.google\.com/i.test(u) && !/\.ics(\?|$)/i.test(u))
+    return "Ese es el enlace para compartir o ver el calendario, no la dirección iCal. En Configuración → tu calendario → «Integrar el calendario», copia la «Dirección secreta en formato iCal» (acaba en .ics).";
+  return null;
+}
+const MOTIVOS = {
+  "404": "Google dice que ese calendario no existe. Comprueba que has copiado la «Dirección secreta en formato iCal» entera (lleva «private-»).",
+  "403": "Google no deja leer ese calendario. Usa la «Dirección secreta en formato iCal» (lleva «private-»).",
+  "401": "Google no deja leer ese calendario. Usa la «Dirección secreta en formato iCal» (lleva «private-»).",
+  "no es iCal": "Ese enlace abre una página web, no un calendario iCal. Copia la «Dirección secreta en formato iCal» (acaba en .ics).",
+  "solo https": "La dirección tiene que empezar por https://",
+};
+/** Comprueba un enlace antes de guardarlo. Devuelve null si va bien, o el motivo explicado. */
+export async function probar(url) {
+  const aviso = revisarEnlace(url);
+  if (aviso) return aviso;
+  try {
+    const t = await token?.();
+    const r = await fetch(WORKER_URL.replace(/\/$/, "") + "/calendarios", {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + t },
+      body: JSON.stringify({ urls: [url] }),
+    });
+    if (r.status === 401) return "El servidor de calendarios no reconoce tu cuenta. Cierra sesión y vuelve a entrar.";
+    if (!r.ok) return `El servidor de calendarios ha fallado (error ${r.status}). Prueba en un rato.`;
+    const j = await r.json();
+    if (j.calendarios?.length) { try { expandir(j.calendarios[0].texto, new Date(), new Date(Date.now() + 864e5)); return null; } catch { return MOTIVOS["no es iCal"]; } }
+    const m = j.motivos?.[url];
+    if (/\/public\/basic\.ics/i.test(url) && /^(404|403|401)$/.test(m || ""))
+      return "Esa es la «Dirección pública», que solo funciona si el calendario es público. Copia la de justo debajo: la «Dirección secreta en formato iCal» (lleva «private-» en el enlace).";
+    return MOTIVOS[m] || (m ? `No he podido leerlo (${m}). Revisa que el enlace esté completo.` : "No he podido leerlo. Revisa que el enlace esté completo.");
+  } catch {
+    return navigator.onLine ? "No he podido conectar con el servidor de calendarios." : "No tienes conexión.";
+  }
+}
