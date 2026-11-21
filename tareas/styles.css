@@ -681,3 +681,15 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .info-metodos p { margin: 0 0 6px; color: var(--suave); }
 .tarea-foco > .suave { flex: 1; min-width: 0; }
 .tarea-foco .cambiar { flex: none; }
+/* elegir método al empezar a estudiar */
+.elegir-metodo h2 { margin: 2px 0 2px; }
+.elegir-metodo > p { margin: 0 0 10px; }
+.metodos-lista button { display: grid; grid-template-columns: 1fr auto; grid-template-areas: "nom ir" "desc ir"; gap: 2px 12px; padding: 12px; border: 1px solid var(--linea); margin-bottom: 8px; background: var(--panel); align-items: center; }
+.metodos-lista button.on { border-color: var(--suave); background: var(--fondo); }
+.metodos-lista .nom-met { grid-area: nom; }
+.metodos-lista .nom-met small { color: var(--suave); margin-left: 4px; }
+.metodos-lista .ultimo { font-style: normal; font-size: .72rem; color: var(--resalte); margin-left: 6px; }
+.metodos-lista .desc-met { grid-area: desc; color: var(--suave); font-size: .84rem; line-height: 1.35; }
+.metodos-lista .desc-met em { display: block; font-style: normal; color: var(--texto); font-weight: 550; margin-top: 3px; }
+.metodos-lista .ir { grid-area: ir; width: 36px; height: 36px; border-radius: 50%; background: var(--acento); color: var(--acento-texto); display: grid; place-items: center; }
+.metodos-lista .ir .ico { width: 14px; height: 14px; fill: currentColor; }

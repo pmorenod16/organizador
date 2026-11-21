@@ -18,7 +18,7 @@ import { hoyISO, sumarDias, lunesDe } from "./fechas.js";
 import { deVista } from "./logica.js";
 import * as Act from "./actualizar.js";
 import * as Cal from "./calendarios.js";
-import { fechaBonita } from "./fechas.js";
+import { fechaBonita, minutosTexto } from "./fechas.js";
 import { minutosEntre } from "./sesiones.js";
 import { conEnlaces } from "./ui.js";
 
@@ -362,26 +362,50 @@ document.addEventListener("keydown", e => {
 
 // ---------- pomodoro ----------
 /** «Empezar estudio»: Enfoque listo con la tarea, sus pasos y los pomodoros que caben en la sesión del calendario */
-function estudiar(id) {
+async function estudiar(id) {
   const t = S.tareas.find(x => x.id === id); if (!t) return;
   const ses = t.fecha ? Cal.enlacesDia(t.fecha).porTarea.get(id) : null;
+  const minSes = ses ? minutosEntre(ses.ini, ses.fin) : null;
+  // primero, cómo quieres estudiar; al elegir, empieza
+  const tipo = await elegirMetodo(t, minSes);
+  if (!tipo) return;
+  if (P.estado().estado !== "parado") P.parar();
+  P.elegirTipo(tipo);
+  if (tipo === "cuenta" && minSes) P.elegirMinutos(minSes);
   const M = P.metodo();
   if (ses && M.foco && !M.sinDescanso) {
     const ciclo = M.foco() + M.descanso();
-    const n = Math.max(1, Math.round(minutosEntre(ses.ini, ses.fin) / ciclo));
-    if (!t.pomosEstimados) D.cambiarTarea(id, { pomosEstimados: (t.pomos || 0) + n });
-    UI.sesion = { tareaId: id, ini: ses.ini, fin: ses.fin, titulo: ses.titulo, pomos: n };
+    const n = Math.max(1, Math.round(minSes / ciclo));
+    if (!t.pomosEstimados && tipo === "pomodoro") D.cambiarTarea(id, { pomosEstimados: (t.pomos || 0) + n });
+    UI.sesion = { tareaId: id, ini: ses.ini, fin: ses.fin, titulo: ses.titulo, pomos: tipo === "pomodoro" ? n : null };
   } else if (ses) UI.sesion = { tareaId: id, ini: ses.ini, fin: ses.fin, titulo: ses.titulo, pomos: null };
-  else UI.sesion = { tareaId: id, fin: null, titulo: null, pomos: t.pomosEstimados ? Math.max(1, t.pomosEstimados - (t.pomos || 0)) : null };
+  else UI.sesion = { tareaId: id, fin: null, titulo: null, pomos: tipo === "pomodoro" && t.pomosEstimados ? Math.max(1, t.pomosEstimados - (t.pomos || 0)) : null };
   guardarUI();
-  if (P.estado().estado !== "parado") P.parar();
-  P.elegirModo("foco"); P.empezar(id); // con el método que tengas elegido en Enfoque
+  P.elegirModo("foco"); P.empezar(id);
   location.hash = "#/enfoque";
 }
+/** Hoja con los métodos de estudio. Devuelve la clave del elegido (o null si se cierra). */
+function elegirMetodo(t, minSes) {
+  return new Promise(ok => {
+    let hecho = false;
+    const ultimo = P.estado().tipo;
+    const extra = (k, m) => {
+      if (!minSes) return "";
+      if (k === "cuenta") return `Toda la sesión: ${minutosTexto(minSes)}`;
+      if (m.foco && !m.sinDescanso) { const n = Math.max(1, Math.round(minSes / (m.foco() + m.descanso()))); return n === 1 ? "Un bloque en la sesión" : `Unos ${n} bloques en la sesión`; }
+      return "";
+    };
+    const el = hoja(`<div class="elegir-metodo"><h2>¿Cómo quieres estudiar?</h2><p class="suave">${esc(t.titulo)}${minSes ? ` · sesión de ${minutosTexto(minSes)}` : ""}</p>
+      <ul class="opciones metodos-lista">${Object.entries(P.METODOS).map(([k, m]) => `<li><button data-m="${k}" class="${k === ultimo ? "on" : ""}">
+        <span class="nom-met"><b>${esc(m.nombre)}</b> <small>${esc(m.corto)}</small>${k === ultimo ? ` <i class="ultimo">el último</i>` : ""}</span>
+        <span class="desc-met">${esc(m.desc)}${extra(k, m) ? `<em>${esc(extra(k, m))}</em>` : ""}</span>
+        <span class="ir">${icono("play")}</span></button></li>`).join("")}</ul></div>`, { clase: "hoja-metodos", alCerrar: () => !hecho && ok(null) });
+    el.querySelectorAll("[data-m]").forEach(b => (b.onclick = () => { hecho = true; el.cerrar(); ok(b.dataset.m); }));
+  });
+}
 function alFoco(id) {
-  if (P.estado().estado !== "parado") { P.elegirTarea(id); toast("Pomodoro con esta tarea"); }
-  else { P.elegirTipo(P.estado().tipo); P.elegirModo("foco"); P.empezar(id); }
-  location.hash = "#/enfoque";
+  if (P.estado().estado !== "parado") { P.elegirTarea(id); toast("Ahora con esta tarea"); location.hash = "#/enfoque"; return; }
+  estudiar(id);
 }
 const FICHA = { alFoco, alEstudiar: estudiar };
 P.suscribir(() => { if (S.listo) { if (UI.ruta === "enfoque") pintar(); else pintarMiniFoco(); } });
