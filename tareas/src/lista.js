@@ -98,3 +98,6 @@ export const vacio = (titulo, texto = "") => `<div class="vacio"><svg viewBox="0
 
 /** Fila «+ Añadir tarea» al final de un grupo, como en Todoist */
 export const filaAnadir = (ctx = {}, texto = "Añadir tarea") => `<button class="fila-anadir" data-anadir='${esc(JSON.stringify(ctx))}'><span>${icono("mas")}</span>${esc(texto)}</button>`;
+
+/** Eventos del calendario (solo lectura), como los muestra Todoist encima de las tareas */
+export const filasEventos = (evs, fecha, horaDe) => evs.length ? `<ul class="eventos-cal">${evs.map(e => `<li><button data-evento="${esc(e.id)}" data-evento-dia="${fecha}" style="--c:${esc(e.color)}"><span class="hora-ev">${esc(horaDe(e, fecha))}</span><span class="tit-ev">${esc(e.titulo)}${e.lugar ? `<small>${esc(e.lugar)}</small>` : ""}</span></button></li>`).join("")}</ul>` : "";

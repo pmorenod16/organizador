@@ -1,7 +1,8 @@
 // Vistas, organizadas como Todoist: Bandeja, Hoy, Próximo (lista o calendario), Buscar, Explorar y Proyectos.
 import { S } from "./datos.js";
 import { esc } from "./ui.js";
-import { filas, vacio, proyectoDe, icono, filaAnadir } from "./lista.js";
+import { filas, vacio, proyectoDe, icono, filaAnadir, filasEventos } from "./lista.js";
+import * as Cal from "./calendarios.js";
 import { deVista, hijosPorPadre, compararManual, comparar } from "./logica.js";
 import { hoyISO, sumarDias, DIAS_CORTOS, DIAS, MESES, lunesDe, diaSemana, aDate } from "./fechas.js";
 import { seccionesDe } from "./selectores.js";
@@ -13,6 +14,7 @@ const botonMenu = (dato, etiqueta = "Opciones de la vista") => `<button class="i
 const diaTitulo = f => { const [, m, d] = f.split("-").map(Number); return `${d} ${MESES[m - 1].slice(0, 3)} · ${DIAS[diaSemana(f)]}`; };
 
 // ---------------- Hoy ----------------
+const evs = f => filasEventos(Cal.delDia(f), f, Cal.horaDe);
 export function hoy() {
   const h = hoyISO();
   const l = deVista("hoy", S.tareas, h);
@@ -20,7 +22,7 @@ export function hoy() {
   const hechasHoy = S.tareas.filter(t => t.hecha && t.hechaEn && new Date(t.hechaEn).toDateString() === new Date().toDateString() && !t.padreId).length;
   return cab("Hoy", { sub: l.length ? `${icono("hecho")} ${l.length} ${l.length === 1 ? "tarea" : "tareas"}` : "", acciones: botonMenu("data-menu-vista") }) +
     (tarde.length ? `<h2 class="grupo tarde-t">Vencidas <span>${tarde.length}</span><button class="enlace" data-reprogramar="hoy">Reprogramar</button></h2><ul class="lista">${filas(tarde)}</ul>` : "") +
-    `<h2 class="grupo">${esc(diaTitulo(h))} · Hoy</h2>` +
+    `<h2 class="grupo">${esc(diaTitulo(h))} · Hoy</h2>` + evs(h) +
     (deHoy.length ? `<ul class="lista">${filas(deHoy, { fecha: false })}</ul>` : "") + filaAnadir({ fecha: h }) +
     (!l.length ? vacio(hechasHoy ? "¡Todo hecho por hoy!" : "Disfruta del día", hechasHoy ? `Has completado ${hechasHoy} ${hechasHoy === 1 ? "tarea" : "tareas"}.` : "No tienes nada para hoy.") : "");
 }
@@ -57,7 +59,7 @@ export function proximos(ui) {
     (tarde.length && inicio === lunesDe(h) ? `<h2 class="grupo tarde-t">Vencidas <span>${tarde.length}</span><button class="enlace" data-reprogramar="hoy">Reprogramar</button></h2><ul class="lista">${filas(tarde)}</ul>` : "") +
     listaDias.map(d => {
       const ts = porDia.get(d) || [];
-      return `<h2 class="grupo" id="d-${d}">${esc(diaTitulo(d))}${d === h ? " · Hoy" : d === sumarDias(h, 1) ? " · Mañana" : ""} ${ts.length ? `<span>${ts.length}</span>` : ""}</h2>${ts.length ? `<ul class="lista">${filas(ts, { fecha: false })}</ul>` : ""}${filaAnadir({ fecha: d })}`;
+      return `<h2 class="grupo" id="d-${d}">${esc(diaTitulo(d))}${d === h ? " · Hoy" : d === sumarDias(h, 1) ? " · Mañana" : ""} ${ts.length ? `<span>${ts.length}</span>` : ""}</h2>${evs(d)}${ts.length ? `<ul class="lista">${filas(ts, { fecha: false })}</ul>` : ""}${filaAnadir({ fecha: d })}`;
     }).join("");
 }
 
@@ -75,11 +77,11 @@ export function calendario(estado, selector = "") {
   for (const l of porDia.values()) l.sort(comparar);
   const celdas = [];
   for (let i = 0; i < semanas * 7; i++) {
-    const d = sumarDias(inicio, i), l = porDia.get(d) || [], pend = l.filter(t => !t.hecha);
+    const d = sumarDias(inicio, i), l = porDia.get(d) || [], pend = l.filter(t => !t.hecha), ev = Cal.delDia(d);
     celdas.push(`<button class="dia ${d.slice(0, 7) !== mes ? "fuera" : ""} ${d === h ? "hoy" : ""} ${d === sel ? "sel" : ""} ${diaSemana(d) > 4 ? "finde" : ""}" data-dia="${d}">
       <span class="num">${Number(d.slice(8))}</span>
-      <span class="eventos">${l.slice(0, 3).map(t => `<em class="${t.hecha ? "hecha" : ""}" style="--c:${esc(proyectoDe(t.proyectoId)?.color || "var(--suave)")}">${t.hora ? `<b>${t.hora}</b> ` : ""}${esc(t.titulo)}</em>`).join("")}${l.length > 3 ? `<small>+${l.length - 3}</small>` : ""}</span>
-      <span class="puntos">${pend.slice(0, 4).map(t => `<i style="background:${esc(proyectoDe(t.proyectoId)?.color || "var(--suave)")}"></i>`).join("")}</span>
+      <span class="eventos">${ev.slice(0, 2).map(e => `<em class="ev" style="--c:${esc(e.color)}">${e.todoElDia ? "" : `<b>${e.ini.slice(11)}</b> `}${esc(e.titulo)}</em>`).join("")}${l.slice(0, Math.max(1, 3 - Math.min(2, ev.length))).map(t => `<em class="${t.hecha ? "hecha" : ""}" style="--c:${esc(proyectoDe(t.proyectoId)?.color || "var(--suave)")}">${t.hora ? `<b>${t.hora}</b> ` : ""}${esc(t.titulo)}</em>`).join("")}${(() => { const vistos = Math.min(2, ev.length) + Math.min(l.length, Math.max(1, 3 - Math.min(2, ev.length))); const resto = ev.length + l.length - vistos; return resto > 0 ? `<small>+${resto}</small>` : ""; })()}</span>
+      <span class="puntos">${ev.slice(0, 2).map(e => `<i class="ev" style="background:${esc(e.color)}"></i>`).join("")}${pend.slice(0, 4).map(t => `<i style="background:${esc(proyectoDe(t.proyectoId)?.color || "var(--suave)")}"></i>`).join("")}</span>
     </button>`);
   }
   const deSel = porDia.get(sel) || [];
@@ -87,7 +89,7 @@ export function calendario(estado, selector = "") {
   return cab("Próximo", { acciones: selector }) +
     `<div class="semana-nav"><b>${MESES[m - 1].replace(/^./, c => c.toUpperCase())} ${a}</b><span class="sep"></span><button class="icono" data-mes="-1" aria-label="Mes anterior">‹</button><button class="btn peque" data-mes="0">Hoy</button><button class="icono" data-mes="1" aria-label="Mes siguiente">›</button></div>
      <div class="mes"><div class="sem">${DIAS_CORTOS.map(d => `<span>${d}</span>`).join("")}</div><div class="rejilla">${celdas.join("")}</div></div>
-     <h2 class="grupo">${esc(diaTitulo(sel))}${sel === h ? " · Hoy" : ""} ${pend.length ? `<span>${pend.length}</span>` : ""}</h2>
+     <h2 class="grupo">${esc(diaTitulo(sel))}${sel === h ? " · Hoy" : ""} ${pend.length ? `<span>${pend.length}</span>` : ""}</h2>${evs(sel)}
      ${pend.length ? `<ul class="lista">${filas(pend, { fecha: false })}</ul>` : ""}${filaAnadir({ fecha: sel })}
      ${hech.length ? `<h2 class="grupo">Completadas <span>${hech.length}</span></h2><ul class="lista">${filas(hech, { fecha: false, sinFoco: true })}</ul>` : ""}
      <p class="suave peque centrado solo-pc">Puedes arrastrar una tarea a otro día.</p>`;
@@ -150,6 +152,7 @@ export function explorar() {
       ${it("#/estadisticas", "grafica", "Estadísticas", "", "#1C7ED6")}
       ${it("#/hechas", "hecho", "Completadas", "", "var(--verde)")}
       ${it("#/proximos/calendario", "proximo", "Calendario", "", "#7048E8")}
+      ${it("#/ajustes/calendarios", "cal", "Google Calendar", Cal.lista().length ? `${Cal.lista().length} conectado${Cal.lista().length > 1 ? "s" : ""}` : "Conectar", "#039BE5")}
     </nav>
     <h2 class="grupo">Mis proyectos <button class="icono peque" data-nuevo-proyecto aria-label="Añadir proyecto">${icono("mas")}</button></h2>
     <nav class="lista-nav tarjeta">${activos.map(p => it(`#/proyecto/${esc(p.id)}`, "almohadilla", esc(p.nombre), n(p.id) || "", p.color)).join("") || `<p class="suave peque relleno">Crea un proyecto por asignatura con el + o importa tus CSV de Todoist.</p>`}

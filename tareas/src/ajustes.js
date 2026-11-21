@@ -8,6 +8,7 @@ import { normal } from "./logica.js";
 import { pedirPermiso, permisoWeb } from "./avisos.js";
 import { esNativo } from "./nativo.js";
 import { icono } from "./lista.js";
+import * as Cal from "./calendarios.js";
 
 export const APK_URL = "https://github.com/pmorenod16/organizador/releases/download/tasca/tasca.apk";
 
@@ -26,6 +27,14 @@ export function ajustes({ email, version }) {
     <h2>Proyectos</h2>
     <ul class="proyectos-ajuste">${S.proyectos.map(p => `<li><span class="punto" style="background:${esc(p.color)}"></span><span>${esc(p.nombre)}${p.archivado ? ' <small class="suave">(archivado)</small>' : ""}</span><small class="suave">${S.tareas.filter(t => t.proyectoId === p.id && !t.hecha).length} pendientes</small><button class="enlace" data-editar-proyecto="${esc(p.id)}">Editar</button></li>`).join("") || '<li class="suave">Aún no hay proyectos.</li>'}</ul>
     <button class="btn" data-nuevo-proyecto>+ Nuevo proyecto</button>
+  </section>
+  <section class="caja" id="calendarios">
+    <h2>Google Calendar</h2>
+    <p class="suave">Tus eventos salen en Hoy, Próximo y el Calendario, como en Todoist (solo se leen: no se cambian desde aquí).</p>
+    <ul class="proyectos-ajuste">${Cal.lista().map((c, i) => `<li><span class="punto" style="background:${esc(c.color)}"></span><span>${esc(c.nombre)}</span><input type="checkbox" class="sw" data-cal-activo="${i}" ${c.activo !== false ? "checked" : ""} aria-label="Mostrar ${esc(c.nombre)}"><button class="enlace" data-cal-editar="${i}">Editar</button></li>`).join("") || '<li class="suave">Aún no hay ningún calendario conectado.</li>'}</ul>
+    <div class="botones-izq"><button class="btn primario" data-cal-editar="">+ Conectar calendario</button>${Cal.lista().length ? `<button class="btn" data-cal-recargar>Actualizar ahora</button>` : ""}</div>
+    ${Cal.error() ? `<p class="aviso">${esc(Cal.error())}</p>` : Cal.cargadoEn() && Cal.lista().length ? `<p class="suave peque">Actualizado a las ${new Date(Cal.cargadoEn()).toTimeString().slice(0, 5)}. Se actualiza solo cada 30 min.</p>` : ""}
+    ${Cal.lista().length ? `<label class="fila-ajuste"><span>Mostrar los eventos</span><input type="checkbox" class="sw" data-aj="verEventos" ${a.verEventos !== false ? "checked" : ""}></label>` : ""}
   </section>
   <section class="caja">
     <h2>Recordatorios</h2>
@@ -177,4 +186,45 @@ export async function restaurar(archivo) {
   for (const p of datos.proyectos || []) D.guardarProyecto(p);
   await D.guardarMuchas(datos.tareas || []);
   toast("Copia restaurada");
+}
+
+// ---------------- calendarios ----------------
+export function editarCalendario(i) {
+  const lista = [...Cal.lista()];
+  const c = i === "" || i == null ? { nombre: "", url: "", color: Cal.COLORES_CAL[lista.length % Cal.COLORES_CAL.length], activo: true } : lista[Number(i)];
+  let color = c.color;
+  const el = hoja(`<form class="form-proyecto"><h2>${i === "" ? "Conectar un calendario" : "Editar calendario"}</h2>
+    ${i === "" ? `<details class="ayuda" open><summary>¿De dónde saco el enlace?</summary><ol>
+      <li>En el ordenador, abre <b>calendar.google.com</b> → ⚙️ <b>Configuración</b>.</li>
+      <li>A la izquierda, en «Configuración de mis calendarios», toca el calendario.</li>
+      <li>Baja hasta <b>Integrar el calendario</b> y copia la <b>Dirección secreta en formato iCal</b> (acaba en <code>.ics</code>).</li>
+      <li>Pégala aquí. Repite con cada calendario que quieras ver (trabajo, gym…).</li></ol>
+      <p class="suave peque">También sirven otros enlaces iCal, como el horario de la UdG o un calendario de exámenes.</p></details>` : ""}
+    <label>Nombre<input name="n" value="${esc(c.nombre)}" placeholder="p. ej. Personal" required></label>
+    <label>Dirección iCal<input name="u" value="${esc(c.url)}" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics" required inputmode="url"></label>
+    <div class="colores">${Cal.COLORES_CAL.map(x => `<button type="button" data-c="${x}" style="background:${x}" class="${x === color ? "on" : ""}" aria-label="Color"></button>`).join("")}</div>
+    <div class="botones">${i !== "" ? `<button type="button" class="btn peligro" data-quitar>Quitar</button>` : ""}<span style="flex:1"></span><button class="btn primario">${i === "" ? "Conectar" : "Guardar"}</button></div></form>`, { clase: "peque" });
+  el.querySelectorAll("[data-c]").forEach(b => (b.onclick = () => { color = b.dataset.c; el.querySelectorAll("[data-c]").forEach(x => x.classList.toggle("on", x === b)); }));
+  const f = $("form", el);
+  f.onsubmit = async e => {
+    e.preventDefault();
+    const url = f.u.value.trim().replace(/^webcal:\/\//i, "https://");
+    if (!/^https:\/\/.+/i.test(url)) { toast("La dirección tiene que empezar por https://"); return; }
+    const nuevo = { nombre: f.n.value.trim() || "Calendario", url, color, activo: c.activo !== false };
+    if (i === "") lista.push(nuevo); else lista[Number(i)] = nuevo;
+    el.cerrar();
+    await D.guardarAjustes({ calendarios: lista });
+    toast("Cargando el calendario…");
+    await Cal.recargar(true);
+    toast(Cal.error() || "Calendario conectado");
+  };
+  el.querySelector("[data-quitar]")?.addEventListener("click", async () => {
+    if (!(await confirmar(`¿Quitar «${c.nombre}»? Solo deja de verse aquí; en Google no se borra nada.`, { si: "Quitar", peligro: true }))) return;
+    lista.splice(Number(i), 1); el.cerrar(); await D.guardarAjustes({ calendarios: lista }); Cal.recargar(true);
+  });
+  setTimeout(() => (i === "" ? f.n : f.n).focus(), 60);
+}
+export async function activarCalendario(i, si) {
+  const lista = [...Cal.lista()]; lista[i] = { ...lista[i], activo: si };
+  await D.guardarAjustes({ calendarios: lista }); Cal.recargar(true);
 }

@@ -457,3 +457,19 @@ button.fila-det:hover { background: var(--fondo); }
 .menu nav a > span:nth-child(2) { flex: 1; text-align: left; }
 .fila-det .val { flex-wrap: wrap; }
 @media (max-width: 480px) { .fila-det .nom { width: 92px; } .fila-det .btn { padding: .3em .6em; } }
+/* eventos del calendario */
+.eventos-cal { list-style: none; padding: 0; margin: 4px 0 6px; display: flex; flex-direction: column; gap: 4px; }
+.eventos-cal button { width: 100%; display: flex; align-items: baseline; gap: 10px; border: 0; text-align: left; background: color-mix(in srgb, var(--c) 12%, transparent); border-left: 4px solid var(--c); border-radius: 8px; padding: 7px 10px; }
+.eventos-cal .hora-ev { font-size: .8rem; color: var(--suave); white-space: nowrap; min-width: 82px; font-variant-numeric: tabular-nums; }
+.eventos-cal .tit-ev { flex: 1; font-size: .92rem; min-width: 0; }
+.eventos-cal .tit-ev small { display: block; color: var(--suave); font-size: .78rem; }
+.dia .eventos em.ev { background: var(--c); color: #fff; border-left-color: var(--c); }
+.dia .puntos i.ev { border-radius: 2px; }
+.evento-ficha h2 { margin: 4px 0 10px; font-size: 1.25rem; }
+.evento-ficha p { display: flex; gap: 8px; align-items: flex-start; }
+.evento-ficha p.suave { display: block; }
+.ayuda { background: var(--fondo); border-radius: 10px; padding: 8px 12px; margin: 6px 0 12px; font-size: .9rem; }
+.ayuda summary { cursor: pointer; font-weight: 600; }
+.ayuda ol { padding-left: 20px; margin: 8px 0; }
+.form-proyecto label { margin-bottom: 10px; }
+.form-proyecto input { width: 100%; }

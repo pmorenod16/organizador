@@ -17,6 +17,9 @@ import { esNativo, alTocarAviso } from "./nativo.js";
 import { hoyISO, sumarDias, lunesDe } from "./fechas.js";
 import { deVista } from "./logica.js";
 import * as Act from "./actualizar.js";
+import * as Cal from "./calendarios.js";
+import { fechaBonita } from "./fechas.js";
+import { conEnlaces } from "./ui.js";
 
 const PANTALLAS = ["carga", "login", "sinAcceso", "app"];
 const mostrar = id => PANTALLAS.forEach(p => ($("#" + p).hidden = p !== id));
@@ -84,6 +87,7 @@ Au.onAuthStateChanged(auth, user => {
   usuario = user;
   $("#cargaTexto").textContent = "Cargando tus tareas…";
   mostrar("carga");
+  Cal.usarToken(() => user.getIdToken());
   D.iniciar(F, db, user.uid);
 });
 
@@ -103,11 +107,38 @@ window.addEventListener("hashchange", () => { leerRuta(); pintar(); window.scrol
 D.alCambiar((s, err) => {
   if (err) { if (!s.listo) fallo("No se pueden leer los datos: " + (err.code || err.message)); else toast("Sin permiso o sin conexión con la base de datos"); return; }
   if (!s.listo) return;
-  if (!$("#carga").hidden) mostrar("app");
+  if (!$("#carga").hidden) { mostrar("app"); primeraCarga(); }
   tema(s.ajustes.tema); try { localStorage.setItem("tasca.tema", s.ajustes.tema || "auto"); } catch {}
   pintar();
   reprogramar();
 });
+
+// ---------- calendarios ----------
+async function primeraCarga() {
+  if (S.ajustes.calendarios === undefined) {
+    // la primera vez, coge los calendarios que ya tenías en el Organizador
+    const l = await Cal.importarDelOrganizador(F, db, usuario.uid);
+    await D.guardarAjustes({ calendarios: l });
+    if (l.length) toast(`He conectado ${l.length === 1 ? "tu calendario" : `tus ${l.length} calendarios`} del Organizador`, { ms: 5000 });
+  }
+  Cal.recargar();
+}
+Cal.alCambiarEventos(() => { if (S.listo) pintar(); });
+setInterval(() => { if (S.listo && !document.hidden) Cal.recargar(); }, 10 * 60 * 1000);
+function verEvento(id, dia) {
+  const e = Cal.delDia(dia).find(x => x.id === id); if (!e) return;
+  const cuando = e.todoElDia ? (e.ini === e.fin ? `${fechaBonita(e.ini)} · todo el día` : `Del ${fechaBonita(e.ini)} al ${fechaBonita(e.fin)}`) : `${fechaBonita(e.ini.slice(0, 10))} · ${e.ini.slice(11)}–${e.fin.slice(11)}`;
+  const el = hoja(`<div class="evento-ficha"><div class="ficha-sup"><span class="miga"><i class="punto" style="background:${esc(e.color)}"></i> ${esc(e.cal)}</span><span class="sep"></span><button class="icono" data-cerrar aria-label="Cerrar">${icono("cerrar")}</button></div>
+    <h2>${esc(e.titulo)}</h2>
+    <p>${icono("cal")} ${esc(cuando)}</p>${e.lugar ? `<p>📍 ${esc(e.lugar)}</p>` : ""}${e.desc ? `<p class="suave">${conEnlaces(e.desc)}</p>` : ""}
+    <p class="suave peque">Es un evento de tu calendario: se cambia en Google Calendar.</p>
+    <div class="botones"><button class="btn primario" data-crear>${icono("mas")} Crear tarea a partir del evento</button></div></div>`, { clase: "peque" });
+  el.querySelector("[data-cerrar]").onclick = () => el.cerrar();
+  el.querySelector("[data-crear]").onclick = () => {
+    const t = D.nuevaTarea({ titulo: e.titulo, notas: [e.lugar, e.desc].filter(Boolean).join("\n"), fecha: e.todoElDia ? e.ini : e.ini.slice(0, 10), hora: e.todoElDia ? null : e.ini.slice(11), recordatorios: e.todoElDia || S.ajustes.aviso == null ? null : [S.ajustes.aviso] });
+    D.guardarTarea(t); el.cerrar(); toast("Tarea creada en la Bandeja"); abrirTarea(t.id, { alFoco });
+  };
+}
 
 // ---------- pintar ----------
 function pintar() {
@@ -133,6 +164,8 @@ function pintar() {
   $("#btnAnadir").hidden = ["enfoque", "estadisticas", "ajustes", "hechas"].includes(UI.ruta);
   if (UI.ruta === "buscar") { const i = $("[data-buscar]", v); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
   if (UI.ruta === "enfoque") tic(v);
+  if (UI.ruta === "ajustes" && UI.arg && !v.dataset.saltado) { v.dataset.saltado = "1"; setTimeout(() => document.getElementById(UI.arg)?.scrollIntoView({ block: "start" }), 50); }
+  if (UI.ruta !== "ajustes") delete v.dataset.saltado;
   pintarMenu();
   pintarMiniFoco();
 }
@@ -205,7 +238,7 @@ setInterval(() => {
   if (UI.ruta === "enfoque") tic($("#vista"));
   const m = $("[data-mini]"); if (m) m.textContent = P.formato(P.tiempo());
 }, 500);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) { P.comprobar(); if (S.listo) pintar(); } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { P.comprobar(); if (S.listo) { pintar(); Cal.recargar(); } } });
 document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && UI.pantallaCompleta) { UI.pantallaCompleta = false; pintar(); } });
 $("#miniFoco").addEventListener("click", e => { const b = e.target.closest("[data-mini-p]"); if (b) { e.preventDefault(); P[b.dataset.miniP](); } });
 
@@ -234,6 +267,9 @@ v.addEventListener("click", async e => {
   if (t && acc === "plegar") { alternarAbierta(id); pintar(); return; }
   if (t && acc === "foco") return alFoco(id);
   const d = b.dataset;
+  if (d.evento) return verEvento(d.evento, d.eventoDia);
+  if (d.calEditar !== undefined) return A.editarCalendario(d.calEditar);
+  if (d.calRecargar !== undefined) { toast("Actualizando…", { ms: 1200 }); await Cal.recargar(true); toast(Cal.error() || "Calendarios al día"); return; }
   if (d.anadir !== undefined) { let c = {}; try { c = JSON.parse(d.anadir); } catch {} return anadir(c); }
   if (d.importarAbrir !== undefined) return abrirImportar();
   if (d.modoProx) { UI.modoProximo = d.modoProx; guardarUI(); history.replaceState(null, "", "#/proximos/" + d.modoProx); pintar(); return; }
@@ -273,7 +309,8 @@ v.addEventListener("click", async e => {
 });
 v.addEventListener("change", e => {
   const x = e.target;
-  if (x.dataset.aj) { A.cambiarAjuste(x); return; }
+  if (x.dataset.aj) { A.cambiarAjuste(x); if (x.dataset.aj === "verEventos") Cal.recargar(true); return; }
+  if (x.dataset.calActivo !== undefined) { A.activarCalendario(Number(x.dataset.calActivo), x.checked); return; }
   if (x.dataset.importar !== undefined && x.files.length) { A.importar([...x.files]); x.value = ""; return; }
   if (x.dataset.restaurar !== undefined && x.files.length) { A.restaurar(x.files[0]); x.value = ""; return; }
   if (x.dataset.verHechas !== undefined) { UI.verHechas[UI.arg] = x.checked; guardarUI(); pintar(); return; }
