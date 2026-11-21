@@ -22,9 +22,9 @@ export function elegirFecha({ fecha = null, hora = null, repetir = null } = {}) 
   const lunes = sumarDias(h, 7 - diaSemana(h));
   const op = [
     [h, "Hoy", DIAS[diaSemana(h)].slice(0, 3), "var(--verde)", "hoy"],
-    [sumarDias(h, 1), "Mañana", DIAS[diaSemana(sumarDias(h, 1))].slice(0, 3), "#E8590C", "cal"],
-    [finde, "Este fin de semana", DIAS[5].slice(0, 3), "#1C7ED6", "cal"],
-    [lunes, "Próxima semana", `lun ${Number(lunes.slice(8))}`, "#7048E8", "proximo"],
+    [sumarDias(h, 1), "Mañana", DIAS[diaSemana(sumarDias(h, 1))].slice(0, 3), "var(--naranja)", "cal"],
+    [finde, "Este fin de semana", DIAS[5].slice(0, 3), "var(--p3)", "cal"],
+    [lunes, "Próxima semana", `lun ${Number(lunes.slice(8))}`, "var(--morado)", "proximo"],
     ["", "Sin fecha", "", "var(--suave)", "cerrar"],
   ];
   const rep = repetir ? `${repetir.cada}:${repetir.n || 1}` : "";

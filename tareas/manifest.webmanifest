@@ -5,8 +5,8 @@
   "start_url": "./#/hoy",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#F7F5F2",
-  "theme_color": "#D2541B",
+  "background_color": "#F3F3F1",
+  "theme_color": "#F3F3F1",
   "lang": "es",
   "icons": [
     { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },

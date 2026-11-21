@@ -1,16 +1,20 @@
 :root {
-  --fondo: #F7F5F2; --panel: #FFFFFF; --texto: #1E1F24; --suave: #6E6F78; --suave2: #EDEAE5; --linea: #E6E2DC;
-  --acento: #D2541B; --acento-claro: #FBE9DF; --acento-texto: #fff;
-  --p1: #E03131; --p2: #F08C00; --p3: #1C7ED6; --p4: #A5A6AE;
-  --verde: #2F9E44; --rojo: #C92A2A; --sombra: 0 1px 2px #0000000d, 0 4px 16px #0000000a;
-  --radio: 14px; --menu: 272px;
+  /* tonos suaves: gris cálido, tinta casi negra y colores apagados (como el Armario) */
+  --fondo: #F3F3F1; --panel: #FFFFFF; --texto: #1D1E22; --suave: #75777F; --suave2: #EAEAE6; --linea: rgba(20, 22, 28, .08);
+  --acento: #2A2C31; --acento-claro: #E8E8E4; --acento-texto: #FFFFFF; --resalte: #B5754F;
+  --p1: #C4625A; --p2: #C8964F; --p3: #6F8DB4; --p4: #B0B2B8;
+  --verde: #5A8F6E; --rojo: #B5524C; --morado: #8C80B4; --naranja: #B97B52;
+  --sombra: 0 1px 2px rgba(20, 22, 28, .04), 0 8px 24px -12px rgba(20, 22, 28, .16);
+  --sombra-g: 0 2px 6px rgba(20, 22, 28, .05), 0 24px 56px -20px rgba(20, 22, 28, .28);
+  --radio: 18px; --menu: 264px;
+  --ease: cubic-bezier(.2, .8, .2, 1); --spring: cubic-bezier(.34, 1.36, .64, 1);
   color-scheme: light;
-  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Geist", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--texto); background: var(--fondo);
   -webkit-tap-highlight-color: transparent;
 }
-@media (prefers-color-scheme: dark) { :root:not([data-tema="claro"]) { --fondo: #17181C; --panel: #212228; --texto: #ECEBEA; --suave: #9C9DA6; --suave2: #2C2D34; --linea: #30313A; --acento: #F0703A; --acento-claro: #3A2620; --p4: #6E6F78; --sombra: 0 1px 2px #0006; color-scheme: dark; } }
-:root[data-tema="oscuro"] { --fondo: #17181C; --panel: #212228; --texto: #ECEBEA; --suave: #9C9DA6; --suave2: #2C2D34; --linea: #30313A; --acento: #F0703A; --acento-claro: #3A2620; --p4: #6E6F78; --sombra: 0 1px 2px #0006; color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-tema="claro"]) { --fondo: #111214; --panel: #1A1B1E; --texto: #ECECEE; --suave: #8F929A; --suave2: #26272B; --linea: rgba(255, 255, 255, .07); --acento: #ECECEE; --acento-texto: #111214; --acento-claro: #2A2B2F; --p4: #64676E; --sombra: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7); --sombra-g: 0 2px 8px rgba(0,0,0,.5), 0 30px 70px -24px rgba(0,0,0,.9); color-scheme: dark; } }
+:root[data-tema="oscuro"] { --fondo: #111214; --panel: #1A1B1E; --texto: #ECECEE; --suave: #8F929A; --suave2: #26272B; --linea: rgba(255, 255, 255, .07); --acento: #ECECEE; --acento-texto: #111214; --acento-claro: #2A2B2F; --p4: #64676E; --sombra: 0 1px 2px rgba(0,0,0,.4), 0 10px 30px -14px rgba(0,0,0,.7); --sombra-g: 0 2px 8px rgba(0,0,0,.5), 0 30px 70px -24px rgba(0,0,0,.9); color-scheme: dark; }
 
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -475,3 +479,133 @@ button.fila-det:hover { background: var(--fondo); }
 .form-proyecto input { width: 100%; }
 .error-form { color: var(--rojo); font-size: .9rem; margin: 6px 0 0; min-height: 0; }
 .error-form:empty { display: none; }
+
+/* =========================================================================
+   Aspecto suave y movimiento (21/11/2026): menos color, más aire, transiciones
+   ========================================================================= */
+body { -webkit-font-smoothing: antialiased; letter-spacing: -.006em; overscroll-behavior-y: none; }
+h1 { font-weight: 650; letter-spacing: -.03em; }
+a { color: inherit; }
+input, select, textarea { border-radius: 12px; border-color: var(--linea); transition: border-color .2s, box-shadow .2s; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--suave); box-shadow: 0 0 0 4px color-mix(in oklab, var(--texto) 7%, transparent); }
+.rapido textarea:focus, .ficha-titulo:focus, .ficha-notas:focus, .pasos input:focus, .buscador:focus { box-shadow: none; }
+
+/* botones: pulsar = encogerse un poco y volver con rebote */
+.btn, .icono, .chip-opc, .seg button, .fila-anadir, .enviar, .fab, .check, .opciones button, .fila-det, .franja button, .lista-nav a, .abajo a {
+  transition: transform .32s var(--spring), background .2s, color .2s, box-shadow .25s, opacity .2s;
+}
+.btn:active, .icono:active, .chip-opc:active, .seg button:active, .enviar:active, .opciones button:active, .franja button:active { transform: scale(.95); transition-duration: .08s; }
+.btn { border-radius: 999px; border-color: var(--linea); font-weight: 550; padding: .6em 1.15em; }
+.btn.primario { background: var(--acento); border-color: transparent; color: var(--acento-texto); box-shadow: var(--sombra); }
+.btn.claro { background: var(--panel); color: var(--texto); }
+.enlace { color: var(--texto); opacity: .75; font-weight: 550; }
+.icono:hover { background: var(--suave2); }
+
+/* listas: sin rayas fuertes, aire entre filas */
+.tarea > .fila { border-bottom: 1px solid var(--linea); }
+.fila { padding: 11px 4px 11px 6px; }
+.fila:hover { background: color-mix(in oklab, var(--panel) 70%, transparent); }
+.grupo { border-bottom: 0; padding-bottom: 2px; margin: 26px 0 4px; font-weight: 600; font-size: .9rem; }
+.grupo > span { opacity: .8; }
+.tarde-t { color: var(--rojo); }
+.meta { gap: 3px 12px; }
+.meta .fecha.hoy { color: var(--verde); }
+.meta .fecha.tarde { color: var(--rojo); }
+.meta .etq { color: var(--suave); }
+.desc-fila { opacity: .9; }
+.check { width: 21px; height: 21px; border-width: 1.6px; background: transparent; }
+.check svg { stroke-width: 2.6; }
+.barra { height: 3px; background: var(--suave2); }
+.barra i { background: color-mix(in oklab, var(--verde) 80%, var(--suave)); }
+.subtareas { border-left-color: var(--suave2); }
+.fila-anadir span { color: var(--suave); }
+.fila-anadir:hover { color: var(--texto); }
+
+/* completar: el círculo se llena, la fila se desvanece y se recoge */
+.tarea.saliendo > .fila .check { background: var(--c); transform: scale(1.12); }
+.tarea.saliendo > .fila .check svg { opacity: 1; stroke: #fff; }
+.tarea.saliendo > .fila .titulo { text-decoration: line-through; color: var(--suave); }
+.tarea.saliendo { animation: recoger .42s var(--ease) .18s forwards; overflow: hidden; }
+@keyframes recoger { to { opacity: 0; transform: translateX(14px); max-height: 0; } }
+.tarea { max-height: 2000px; }
+
+/* entrada de pantalla y capa vecina al deslizar */
+#vista.entrando > * { animation: entrar .34s var(--ease) both; }
+#vista.entrando > *:nth-child(2) { animation-delay: .03s; }
+#vista.entrando > *:nth-child(3) { animation-delay: .06s; }
+#vista.entrando > *:nth-child(n+4) { animation-delay: .09s; }
+@keyframes entrar { from { opacity: 0; transform: translateY(8px); } }
+.peek { position: fixed; top: 0; left: 0; width: 100%; height: 100dvh; overflow: hidden; z-index: 4; background: var(--fondo); pointer-events: none; }
+@media (prefers-reduced-motion: reduce) { #vista.entrando > *, .tarea.saliendo { animation: none !important; } }
+
+/* barra inferior flotante con indicador que se desliza */
+@media (max-width: 860px) {
+  .abajo { left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom)); border: 1px solid var(--linea); border-radius: 24px; padding: 6px; background: color-mix(in oklab, var(--panel) 92%, transparent); box-shadow: var(--sombra-g); backdrop-filter: none; }
+  .abajo a { z-index: 1; padding: 7px 0 5px; border-radius: 18px; }
+  .abajo a.on { color: var(--texto); font-weight: 600; }
+  .abajo .indicador { position: absolute; top: 6px; bottom: 6px; left: 6px; border-radius: 18px; background: var(--suave2); transition: transform .38s var(--spring), width .3s var(--ease); z-index: 0; }
+  .abajo .globo { background: var(--suave); }
+  .abajo .globo.rojo { background: var(--rojo); }
+  .fab { bottom: calc(90px + env(safe-area-inset-bottom)); width: 56px; height: 56px; border-radius: 20px; background: var(--acento); color: var(--acento-texto); box-shadow: var(--sombra-g); }
+  .fab:active { transform: scale(.9) rotate(45deg); }
+  .mini-foco { bottom: calc(96px + env(safe-area-inset-bottom)); }
+  #vista { padding-bottom: calc(190px + env(safe-area-inset-bottom)); }
+  .toast { bottom: calc(160px + env(safe-area-inset-bottom)); }
+}
+.fab { background: var(--acento); color: var(--acento-texto); box-shadow: var(--sombra-g); }
+.mini-foco { background: var(--acento); color: var(--acento-texto); }
+
+/* menú lateral (ordenador) */
+.menu { background: transparent; border-right: 1px solid var(--linea); }
+.menu nav a { border-radius: 12px; padding: 9px 12px; transition: background .2s; }
+.menu nav a.on { background: var(--panel); color: var(--texto); box-shadow: var(--sombra); }
+.menu .anadir-menu { color: var(--texto); }
+.menu .anadir-menu span { background: var(--acento); color: var(--acento-texto); }
+.principal { background: transparent; }
+
+/* hojas: más redondas, con muelle y arrastrables hacia abajo */
+.fondo-hoja { transition: background .3s var(--ease); }
+.fondo-hoja.abierta { background: rgba(10, 11, 14, .38); }
+.hoja { border-radius: 28px 28px 0 0; transition: transform .38s var(--ease), opacity .25s; box-shadow: var(--sombra-g); padding-top: 10px; }
+.hoja .asa { width: 40px; height: 5px; background: var(--suave2); margin-bottom: 14px; }
+@media (min-width: 861px) { .hoja { border-radius: 26px; } }
+
+/* selectores y chips */
+.chip-opc { border-radius: 999px; border-color: var(--linea); padding: 6px 12px; }
+.chip-opc.con { background: var(--suave2); border-color: transparent; }
+.chip { background: var(--suave2); color: var(--texto); }
+.chip.on { border-color: var(--texto); }
+.seg { background: var(--suave2); border-radius: 999px; padding: 3px; }
+.seg button { border-radius: 999px; }
+.seg button.on { box-shadow: var(--sombra); }
+.enviar { background: var(--acento); color: var(--acento-texto); border-radius: 50%; }
+.opciones button { border-radius: 14px; }
+
+/* tarjetas y cajas */
+.caja, .lista-nav.tarjeta, .tarjeta-dato, .mes, .barras { border-color: var(--linea); border-radius: var(--radio); box-shadow: var(--sombra); }
+.franja button.hoy { background: var(--acento); color: var(--acento-texto); }
+.franja button.hoy small { color: inherit; opacity: .7; }
+.franja button i { color: var(--suave); }
+.dia.hoy .num { background: var(--acento); color: var(--acento-texto); }
+.dia.sel { outline-color: var(--suave); }
+.dia .eventos em { border-left-width: 2px; background: color-mix(in oklab, var(--c) 12%, transparent); }
+.dia .eventos em.ev { background: color-mix(in oklab, var(--c) 22%, transparent); color: var(--texto); }
+.eventos-cal button { background: color-mix(in oklab, var(--c) 9%, var(--panel)); border-left-width: 3px; border-radius: 12px; }
+.barras .b span { background: color-mix(in oklab, var(--resalte) 75%, var(--suave)); opacity: .7; }
+.barras.hechas .b span { background: var(--verde); }
+.sw:checked { background: var(--acento); }
+.ahora { background: var(--acento); }
+
+/* enfoque */
+.reloj .avance { stroke: var(--resalte); }
+.modo-corto .reloj .avance, .modo-largo .reloj .avance { stroke: var(--verde); }
+.ciclos i.on { background: var(--resalte); }
+.tomates i { border-color: var(--resalte); }
+.tomates i.on { background: var(--resalte); }
+.pasos.foco li.actual { background: var(--suave2); }
+
+/* colores de proyecto y calendario un poco apagados */
+.punto, .meta .proy i, .lista-nav a > span:first-child, .menu .ico-m, .vista-cab h1 > span, .chip-proy > span, .miga > span { filter: saturate(.7); }
+.dia .eventos em, .eventos-cal button, .dia .puntos i { filter: saturate(.8); }
+.toast { border-radius: 16px; box-shadow: var(--sombra-g); }
+.toast button { color: var(--fondo); filter: none; text-decoration: underline; text-underline-offset: 3px; }

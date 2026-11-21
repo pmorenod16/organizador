@@ -1,6 +1,6 @@
 // Service worker de Tasca: abre sin conexión con lo último que tenía y se actualiza sola.
-const CACHE = "tasca-v2";
-const SHELL = ["./", "./index.html", "./styles.css?v=1", "./src/main.js?v=1", "./icon.svg", "./icon-192.png", "./manifest.webmanifest", "../config.js", "../capacitor-core.js"];
+const CACHE = "tasca-v3";
+const SHELL = ["./", "./index.html", "./styles.css?v=2", "./src/main.js?v=1", "./icon.svg", "./icon-192.png", "./manifest.webmanifest", "../config.js", "../capacitor-core.js"];
 
 self.addEventListener("install", e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL).catch(() => {})).then(() => self.skipWaiting()));
@@ -19,7 +19,7 @@ self.addEventListener("fetch", e => {
       if (res.ok) { const copia = res.clone(); caches.open(CACHE).then(c => c.put(req, copia)); }
       return res;
     }).catch(() => caches.match(req, { ignoreSearch: true }).then(r => r || (req.mode === "navigate" ? caches.match("./index.html") : Response.error()))));
-  } else if (url.hostname === "www.gstatic.com") {
+  } else if (url.hostname === "www.gstatic.com" || url.hostname === "fonts.gstatic.com" || url.hostname === "fonts.googleapis.com") {
     e.respondWith(caches.match(req).then(hit => hit || fetch(req).then(res => {
       if (res.ok) { const copia = res.clone(); caches.open(CACHE).then(c => c.put(req, copia)); }
       return res;

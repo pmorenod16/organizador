@@ -146,21 +146,14 @@ function pintar() {
   const v = $("#vista");
   // no repintar mientras se escribe en el buscador
   const buscando = document.activeElement?.dataset?.buscar !== undefined;
-  let html;
-  switch (UI.ruta) {
-    case "proximos": html = V.proximos(UI); break;
-    case "explorar": html = V.explorar(); break;
-    case "bandeja": html = V.bandeja(); break;
-    case "proyecto": html = V.proyecto(UI.arg, { verHechas: !!UI.verHechas[UI.arg] }); break;
-    case "buscar": if (buscando && $("#resultados")) { $("#resultados").innerHTML = V.resultados(UI.q); pintarMenu(); return; } html = V.buscar(UI.q); break;
-    case "hechas": html = V.hechas(); break;
-    case "enfoque": html = enfoque(UI); break;
-    case "estadisticas": html = estadisticas(); break;
-    case "ajustes": html = A.ajustes({ email: usuario?.email, version: Act.VERSION || "—" }); break;
-    default: UI.ruta = "hoy"; html = V.hoy();
-  }
-  v.innerHTML = html;
-  v.dataset.ruta = UI.ruta;
+  if (UI.ruta === "buscar" && buscando && $("#resultados")) { $("#resultados").innerHTML = V.resultados(UI.q); pintarMenu(); return; }
+  if (!["proximos", "explorar", "bandeja", "proyecto", "buscar", "hechas", "enfoque", "estadisticas", "ajustes"].includes(UI.ruta)) UI.ruta = "hoy";
+  const nueva = v.dataset.ruta !== UI.ruta + "/" + (UI.arg || "");
+  v.innerHTML = htmlDe(UI.ruta, UI.arg);
+  v.dataset.ruta = UI.ruta + "/" + (UI.arg || "");
+  // al cambiar de pantalla, entrada suave (si no se ha llegado deslizando: entonces ya estaba a la vista)
+  if (nueva && !sinEntrada) { v.classList.remove("entrando"); void v.offsetWidth; v.classList.add("entrando"); clearTimeout(tEntrada); tEntrada = setTimeout(() => v.classList.remove("entrando"), 600); }
+  sinEntrada = false;
   $("#btnAnadir").hidden = ["enfoque", "estadisticas", "ajustes", "hechas"].includes(UI.ruta);
   if (UI.ruta === "buscar") { const i = $("[data-buscar]", v); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
   if (UI.ruta === "enfoque") tic(v);
@@ -170,6 +163,111 @@ function pintar() {
   pintarMiniFoco();
 }
 
+let sinEntrada = false, tEntrada = 0;
+function htmlDe(ruta, arg) {
+  switch (ruta) {
+    case "proximos": return V.proximos(UI);
+    case "explorar": return V.explorar();
+    case "bandeja": return V.bandeja();
+    case "proyecto": return V.proyecto(arg, { verHechas: !!UI.verHechas[arg] });
+    case "buscar": return V.buscar(UI.q);
+    case "hechas": return V.hechas();
+    case "enfoque": return enfoque(UI);
+    case "estadisticas": return estadisticas();
+    case "ajustes": return A.ajustes({ email: usuario?.email, version: Act.VERSION || "—" });
+    default: return V.hoy();
+  }
+}
+
+// ---------- deslizar entre pestañas (móvil) ----------
+// Como en el Armario: al arrastrar de lado se pinta la pestaña vecina pegada al borde y las dos siguen al dedo.
+// Al soltar, si has pasado un cuarto de pantalla o lo has lanzado rápido, entra la vecina; si no, vuelven.
+const ORDEN = ["bandeja", "hoy", "proximos", "buscar", "explorar"];
+const EASE = "cubic-bezier(.22,.8,.25,1)";
+let sw = null, peek = null;
+const vista = () => $("#vista");
+const deslizaDeLado = el => {
+  for (let e = el; e && e !== vista(); e = e.parentElement) {
+    if (e.matches?.("input, textarea, select, [data-nodeslizar], .franja, .seg, .mes")) return true;
+    if (e.scrollWidth > e.clientWidth + 4 && /(auto|scroll)/.test(getComputedStyle(e).overflowX)) return true;
+  }
+  return false;
+};
+const mover = (el, x, ms) => { if (!el) return; el.style.transition = ms ? `transform ${ms}ms ${EASE}` : "none"; el.style.transform = `translate3d(${x}px,0,0)`; };
+function quitarPeek() { peek?.el.remove(); peek = null; }
+function hacerPeek(ruta) {
+  if (peek?.ruta === ruta) return peek;
+  quitarPeek();
+  const el = document.createElement("div");
+  el.className = "peek"; el.inert = true;
+  const r = vista().getBoundingClientRect();
+  el.innerHTML = `<section class="vista-peek" style="max-width:${vista().offsetWidth}px;padding:${getComputedStyle(vista()).padding};margin:0 auto">${htmlDe(ruta, null)}</section>`;
+  el.firstElementChild.style.paddingTop = Math.max(0, r.top) + parseFloat(getComputedStyle(vista()).paddingTop) + "px";
+  document.body.append(el);
+  return (peek = { el, ruta });
+}
+const indiceActual = () => (UI.ruta === "proximos" || ORDEN.includes(UI.ruta) ? ORDEN.indexOf(UI.ruta) : -1);
+document.addEventListener("touchstart", e => {
+  sw = null;
+  if (innerWidth > 860 || hayHoja() || !vista()?.contains(e.target) || e.touches.length !== 1) return;
+  const t = e.touches[0];
+  if (t.clientX < 24 || t.clientX > innerWidth - 24 || deslizaDeLado(e.target) || indiceActual() < 0) return;
+  sw = { x: t.clientX, y: t.clientY, lock: null, dx: 0, pts: [[t.clientX, performance.now()]] };
+}, { passive: true });
+document.addEventListener("touchmove", e => {
+  if (!sw) return;
+  const t = e.touches[0], dx = t.clientX - sw.x, dy = t.clientY - sw.y;
+  if (!sw.lock) {
+    if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+    sw.lock = Math.abs(dx) > Math.abs(dy) * 1.25 ? "x" : "y";
+    if (sw.lock === "y") { sw = null; return; }
+    vista().style.willChange = "transform";
+  }
+  e.preventDefault();
+  const i = indiceActual(), dir = dx < 0 ? 1 : -1, sig = ORDEN[i + dir];
+  sw.dx = sig ? dx : dx * 0.25; // en la primera y la última, resistencia de goma
+  sw.pts.push([t.clientX, performance.now()]); if (sw.pts.length > 5) sw.pts.shift();
+  if (sig) mover(hacerPeek(sig).el, sw.dx + dir * innerWidth); else quitarPeek();
+  mover(vista(), sw.dx);
+  moverIndicador(i - sw.dx / innerWidth);
+}, { passive: false });
+function finDeslizar() {
+  if (!sw) return;
+  const s = sw; sw = null;
+  if (s.lock !== "x") return;
+  const [a, b] = [s.pts[0], s.pts[s.pts.length - 1]], vel = (b[0] - a[0]) / Math.max(1, b[1] - a[1]);
+  const i = indiceActual(), dir = s.dx < 0 ? 1 : -1, sig = ORDEN[i + dir];
+  const va = sig && peek?.ruta === sig && (Math.abs(s.dx) > innerWidth * 0.25 || (Math.abs(vel) > 0.45 && Math.sign(vel) === Math.sign(s.dx) && Math.abs(s.dx) > 30));
+  if (!va) {
+    mover(vista(), 0, 240); if (peek) mover(peek.el, dir * innerWidth, 240); moverIndicador(i, true);
+    setTimeout(() => { vista().style.cssText = ""; quitarPeek(); }, 250);
+    return;
+  }
+  const ms = Math.round(Math.max(150, Math.min(280, (innerWidth - Math.abs(s.dx)) / Math.max(1.1, Math.abs(vel)))));
+  mover(vista(), -dir * innerWidth, ms); mover(peek.el, 0, ms); moverIndicador(i + dir, true);
+  setTimeout(() => {
+    sinEntrada = true;
+    vista().style.cssText = "";
+    location.hash = "#/" + sig;   // pinta la vecina en #vista (igual que la capa) y luego se quita la capa
+    window.scrollTo(0, 0);
+    requestAnimationFrame(() => requestAnimationFrame(quitarPeek));
+  }, ms);
+}
+document.addEventListener("touchend", finDeslizar, { passive: true });
+document.addEventListener("touchcancel", finDeslizar, { passive: true });
+
+/** El fondo de la pestaña activa de la barra de abajo se desliza a su sitio (o sigue al dedo) */
+function moverIndicador(pos, animar = false) {
+  const ind = $("#abajo .indicador"); if (!ind) return;
+  const as = $$("#abajo a"); if (!as.length) return;
+  const w = as[0].offsetWidth;
+  ind.style.width = w + "px";
+  ind.style.transition = animar ? "" : "none";
+  ind.style.transform = `translateX(${Math.max(0, Math.min(as.length - 1, pos)) * w}px)`;
+  ind.style.opacity = pos < 0 ? "0" : "1";
+}
+
+addEventListener("resize", () => moverIndicador(PESTANAS.findIndex(([r]) => r === pestanaDe(UI.ruta))));
 function contar(vista, extra) { return deVista(vista, S.tareas, hoyISO(), extra).length; }
 const PESTANAS = [["bandeja", "Bandeja", "bandeja"], ["hoy", "Hoy", "hoy"], ["proximos", "Próximo", "proximo"], ["buscar", "Buscar", "buscar"], ["explorar", "Explorar", "explorar"]];
 const pestanaDe = r => (["proyecto", "enfoque", "estadisticas", "hechas", "ajustes"].includes(r) ? "explorar" : r);
@@ -183,11 +281,11 @@ function pintarMenu() {
     <button class="anadir-menu" data-anadir-menu><span>${icono("mas")}</span>Añadir tarea</button>
     <nav>
       ${it("buscar", "Buscar", "buscar")}
-      ${it("bandeja", "Bandeja de entrada", "bandeja", contar("bandeja"), "#1C7ED6")}
+      ${it("bandeja", "Bandeja de entrada", "bandeja", contar("bandeja"), "var(--p3)")}
       ${it("hoy", "Hoy", "hoy", nHoy ? `<span class="${tarde ? "rojo" : ""}">${nHoy}</span>` : "", "var(--verde)")}
-      ${it("proximos", "Próximo", "proximo", "", "#7048E8")}
+      ${it("proximos", "Próximo", "proximo", "", "var(--morado)")}
       ${it("enfoque", "Enfoque", "tomate", "", "var(--acento)")}
-      ${it("estadisticas", "Estadísticas", "grafica", "", "#1098AD")}
+      ${it("estadisticas", "Estadísticas", "grafica", "", "var(--p3)")}
       ${it("hechas", "Completadas", "hecho", "", "var(--suave)")}
     </nav>
     <h3>Mis proyectos <button class="icono peque" data-nuevo-proyecto aria-label="Añadir proyecto">${icono("mas")}</button></h3>
@@ -195,7 +293,14 @@ function pintarMenu() {
       <button class="enlace-menu" data-importar-abrir>${icono("importar")} Importar CSV de Todoist</button></nav>
     <nav class="pie-menu">${it("ajustes", "Ajustes", "ajustes")}</nav>`;
   const pes = pestanaDe(UI.ruta);
-  $("#abajo").innerHTML = PESTANAS.map(([r, n, i]) => `<a href="#/${r}" class="${pes === r ? "on" : ""}">${icono(i)}<span>${n}</span>${r === "hoy" && nHoy ? `<i class="globo ${tarde ? "rojo" : ""}">${nHoy}</i>` : ""}</a>`).join("");
+  const abajo = $("#abajo");
+  if (!abajo.querySelector(".indicador")) abajo.innerHTML = `<span class="indicador"></span>` + PESTANAS.map(([r, n, i]) => `<a href="#/${r}" data-pes="${r}">${icono(i)}<span>${n}</span><i class="globo" hidden></i></a>`).join("");
+  for (const a of abajo.querySelectorAll("a")) {
+    a.classList.toggle("on", a.dataset.pes === pes);
+    const g = a.querySelector(".globo");
+    if (a.dataset.pes === "hoy") { g.hidden = !nHoy; g.textContent = nHoy; g.classList.toggle("rojo", !!tarde); }
+  }
+  requestAnimationFrame(() => moverIndicador(PESTANAS.findIndex(([r]) => r === pes), true));
 }
 
 function pintarMiniFoco() {
@@ -259,6 +364,7 @@ v.addEventListener("click", async e => {
   const acc = b.dataset.acc;
   if (t && acc === "check") {
     vibrar(); li.classList.add("saliendo");
+    if (!t.hecha) await new Promise(r => setTimeout(r, 420)); // que se vea cómo se marca antes de quitarla
     const r = await D.alternar(t);
     toast(r.texto, { accion: "Deshacer", alPulsar: r.deshacer });
     return;

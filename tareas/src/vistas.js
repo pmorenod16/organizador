@@ -149,10 +149,10 @@ export function explorar() {
   return cab("Explorar", { acciones: `<a class="icono" href="#/ajustes" aria-label="Ajustes">${icono("ajustes")}</a>` }) +
     `<nav class="lista-nav tarjeta">
       ${it("#/enfoque", "tomate", "Enfoque (Pomodoro)", "", "var(--acento)")}
-      ${it("#/estadisticas", "grafica", "Estadísticas", "", "#1C7ED6")}
+      ${it("#/estadisticas", "grafica", "Estadísticas", "", "var(--p3)")}
       ${it("#/hechas", "hecho", "Completadas", "", "var(--verde)")}
-      ${it("#/proximos/calendario", "proximo", "Calendario", "", "#7048E8")}
-      ${it("#/ajustes/calendarios", "cal", "Google Calendar", Cal.lista().length ? `${Cal.lista().length} conectado${Cal.lista().length > 1 ? "s" : ""}` : "Conectar", "#039BE5")}
+      ${it("#/proximos/calendario", "proximo", "Calendario", "", "var(--morado)")}
+      ${it("#/ajustes/calendarios", "cal", "Google Calendar", Cal.lista().length ? `${Cal.lista().length} conectado${Cal.lista().length > 1 ? "s" : ""}` : "Conectar", "var(--p3)")}
     </nav>
     <h2 class="grupo">Mis proyectos <button class="icono peque" data-nuevo-proyecto aria-label="Añadir proyecto">${icono("mas")}</button></h2>
     <nav class="lista-nav tarjeta">${activos.map(p => it(`#/proyecto/${esc(p.id)}`, "almohadilla", esc(p.nombre), n(p.id) || "", p.color)).join("") || `<p class="suave peque relleno">Crea un proyecto por asignatura con el + o importa tus CSV de Todoist.</p>`}

@@ -35,7 +35,7 @@ export function iniciar(firestore, baseDatos, usuario) {
 }
 
 // ---------- proyectos ----------
-export const COLORES = ["#E03131", "#E8590C", "#F59F00", "#2F9E44", "#0CA678", "#1098AD", "#1C7ED6", "#4263EB", "#7048E8", "#AE3EC9", "#D6336C", "#868E96"];
+export const COLORES = ["#C4625A", "#C98A5B", "#C8A65A", "#7E9E6B", "#5E9A8C", "#5F93A6", "#6F8DB4", "#7C80B8", "#957BB0", "#B07A9E", "#B76E7E", "#8A8D93"];
 export function guardarProyecto(p) {
   const x = { id: p.id || nuevoId(), nombre: p.nombre.trim(), color: p.color || COLORES[S.proyectos.length % COLORES.length], orden: p.orden ?? S.proyectos.length, archivado: !!p.archivado, secciones: p.secciones || [], creado: p.creado || Date.now() };
   F.setDoc(doc("proyectos", x.id), limpio(x));

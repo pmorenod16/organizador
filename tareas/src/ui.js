@@ -25,15 +25,46 @@ export function hoja(html, { clase = "", alCerrar } = {}) {
   const cerrar = () => {
     const i = pila.indexOf(cerrar); if (i >= 0) pila.splice(i, 1);
     fondo.classList.remove("abierta");
-    setTimeout(() => fondo.remove(), 180);
+    setTimeout(() => fondo.remove(), 320);
     alCerrar?.();
   };
   fondo.addEventListener("pointerdown", e => { if (e.target === fondo) fondo.dataset.fuera = "1"; });
   fondo.addEventListener("click", e => { if (e.target === fondo && fondo.dataset.fuera) cerrar(); delete fondo.dataset.fuera; });
   pila.push(cerrar);
   const el = fondo.firstElementChild;
+  arrastrarParaCerrar(fondo, el, cerrar);
   el.cerrar = cerrar;
   return el;
+}
+/** En el móvil la hoja se arrastra hacia abajo para cerrarla: sigue al dedo y, al soltar, se cierra si has bajado bastante o rápido */
+function arrastrarParaCerrar(fondo, hojaEl, cerrar) {
+  if (!matchMedia("(pointer: coarse)").matches) return;
+  let st = null;
+  hojaEl.addEventListener("touchstart", e => {
+    const t = e.touches[0];
+    if (e.touches.length !== 1 || e.target.closest("input, textarea, select")) return (st = null);
+    st = { y: t.clientY, x: t.clientX, dy: 0, t0: performance.now(), lock: null, arriba: hojaEl.scrollTop <= 0 };
+  }, { passive: true });
+  hojaEl.addEventListener("touchmove", e => {
+    if (!st || !st.arriba) return;
+    const t = e.touches[0], dy = t.clientY - st.y, dx = t.clientX - st.x;
+    if (!st.lock) { if (Math.abs(dy) < 6 && Math.abs(dx) < 6) return; st.lock = dy > Math.abs(dx) * 1.2 ? "y" : "x"; }
+    if (st.lock !== "y" || dy < 0) return;
+    e.preventDefault();
+    st.dy = dy;
+    hojaEl.style.transition = "none"; hojaEl.style.transform = `translateY(${dy}px)`;
+    fondo.style.transition = "none"; fondo.style.background = `rgba(10, 11, 14, ${Math.max(0.05, 0.38 * (1 - dy / 500))})`;
+  }, { passive: false });
+  const fin = () => {
+    if (!st) return;
+    const { dy, t0 } = st; st = null;
+    const v = dy / Math.max(1, performance.now() - t0);
+    hojaEl.style.transition = ""; fondo.style.transition = ""; fondo.style.background = "";
+    hojaEl.style.transform = "";
+    if (dy > 110 || (v > 0.5 && dy > 30)) cerrar();
+  };
+  hojaEl.addEventListener("touchend", fin, { passive: true });
+  hojaEl.addEventListener("touchcancel", fin, { passive: true });
 }
 export const cerrarHoja = () => pila[pila.length - 1]?.();
 export const hayHoja = () => pila.length > 0;

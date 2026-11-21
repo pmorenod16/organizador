@@ -8,7 +8,7 @@ import { textoRepetir, hijosPorPadre, compararManual } from "./logica.js";
 import { colorPrioridad, icono, proyectoDe } from "./lista.js";
 import { elegirFecha, elegirPrioridad, elegirAviso, elegirEtiquetas, elegirProyecto, menu, textoAviso } from "./selectores.js";
 
-export const colorFecha = f => { const h = hoyISO(); return !f ? "" : f < h ? "var(--p1)" : f === h ? "var(--verde)" : f === sumarDias(h, 1) ? "#E8590C" : f <= sumarDias(h, 7) ? "#7048E8" : "var(--suave)"; };
+export const colorFecha = f => { const h = hoyISO(); return !f ? "" : f < h ? "var(--p1)" : f === h ? "var(--verde)" : f === sumarDias(h, 1) ? "var(--naranja)" : f <= sumarDias(h, 7) ? "var(--morado)" : "var(--suave)"; };
 const nombreProyecto = (pid, sec) => { const p = proyectoDe(pid); return p ? `<span style="color:${esc(p.color)}">${icono("almohadilla")}</span>${esc(p.nombre)}${sec ? ` <span class="suave">/ ${esc(sec)}</span>` : ""}` : `${icono("bandeja")}Bandeja de entrada`; };
 
 // ---------------- añadir tarea ----------------
