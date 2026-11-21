@@ -8,7 +8,10 @@ import { execFileSync } from "node:child_process";
 import { writeFileSync, readFileSync, existsSync, appendFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 
-const PACKAGE = "io.github.pmorenod16.organizador";
+// Sirve para las dos apps: el Organizador (por defecto) y Tasca (ANDROID_PACKAGE / ANDROID_NOMBRE).
+// Las dos firman con la misma clave.
+const PACKAGE = process.env.ANDROID_PACKAGE || "io.github.pmorenod16.organizador";
+const NOMBRE = process.env.ANDROID_NOMBRE || "Organizador";
 const ALIAS = "organizador";
 const [, , ksPath, gsPath] = process.argv;
 if (!ksPath || !gsPath) throw new Error("Uso: node android-setup.mjs <keystore> <google-services.json>");
@@ -41,7 +44,7 @@ const found = (list.apps || []).find(a => a.packageName === PACKAGE);
 if (found) { appId = found.appId; console.log(`✓ App Android ya registrada en Firebase (${PACKAGE})`); }
 else {
   console.log(`Registrando la app Android ${PACKAGE} en Firebase…`);
-  let op = await api("POST", `projects/${PID}/androidApps`, { packageName: PACKAGE, displayName: "Organizador (Android)" });
+  let op = await api("POST", `projects/${PID}/androidApps`, { packageName: PACKAGE, displayName: `${NOMBRE} (Android)` });
   for (let i = 0; i < 30 && !op.done; i++) { await sleep(2000); op = await api("GET", op.name); }
   if (op.error) throw new Error("Firebase no ha podido crear la app Android: " + JSON.stringify(op.error));
   appId = op.response?.appId;
