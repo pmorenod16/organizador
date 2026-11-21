@@ -42,7 +42,7 @@ document.addEventListener("keydown", e => { if (e.key === "Escape" && pila.lengt
 export function confirmar(texto, { si = "Sí", no = "Cancelar", peligro = false } = {}) {
   return new Promise(ok => {
     const el = hoja(`<p class="pregunta">${esc(texto)}</p><div class="botones"><button class="btn" data-r="0">${esc(no)}</button><button class="btn ${peligro ? "peligro" : "primario"}" data-r="1">${esc(si)}</button></div>`, { clase: "peque", alCerrar: () => ok(false) });
-    el.querySelectorAll("[data-r]").forEach(b => (b.onclick = () => { const r = b.dataset.r === "1"; el.cerrar(); setTimeout(() => ok(r), 0); }));
+    el.querySelectorAll("[data-r]").forEach(b => (b.onclick = () => { ok(b.dataset.r === "1"); el.cerrar(); }));
   });
 }
 export function pedirTexto(titulo, valor = "", { boton = "Guardar", placeholder = "" } = {}) {
