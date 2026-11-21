@@ -3,6 +3,8 @@ import { S } from "./datos.js";
 import { esc } from "./ui.js";
 import * as P from "./pomodoro.js";
 import { RUIDOS } from "./sonido.js";
+import { hoja } from "./ui.js";
+import * as D from "./datos.js";
 import { proyectoDe, icono, colorPrioridad } from "./lista.js";
 import { hijosPorPadre, compararManual, racha, deVista } from "./logica.js";
 import { hoyISO, sumarDias, fechaDe, DIAS_CORTOS, diaSemana, minutosTexto, lunesDe } from "./fechas.js";
@@ -30,6 +32,7 @@ export function enfoque(ui) {
     <header class="vista-cab"><div class="tit"><h1>Enfoque</h1></div><div class="acc-cab"><button class="icono" data-info-metodos aria-label="Qué es cada método">?</button></div></header>
     <div class="metodos" role="tablist" data-nodeslizar>${Object.entries(P.METODOS).map(([k, m]) => `<button data-tipo="${k}" class="${e.tipo === k ? "on" : ""}" ${parado || e.tipo === k ? "" : "disabled"}><b>${m.nombre}</b><small>${m.corto}</small></button>`).join("")}</div>
     <p class="desc-metodo suave">${esc(M.desc)}</p>
+    ${e.tipo === "pomodoro" ? `<button class="ajustar-pomo" data-ajustar-pomo ${parado ? "" : "disabled"}>${esc(resumenPomodoro())} <span>${parado ? "Ajustar" : ""}</span></button>` : ""}
     ${parado && !M.libre && !M.sinDescanso ? `<div class="seg modos">${Object.entries(P.NOMBRES).filter(([k]) => k !== "largo" || M.largo).map(([k, n]) => `<button data-modo="${k}" class="${e.modo === k ? "on" : ""}">${n}</button>`).join("")}</div>` : ""}
     ${parado && e.tipo === "cuenta" ? `<div class="seg minutos">${[15, 30, 45, 60, 90, 120].map(n => `<button data-minutos="${n}" class="${Number(e.minutos) === n ? "on" : ""}">${n < 60 ? n + " min" : n / 60 + " h"}</button>`).join("")}<button data-minutos-otro>Otro</button></div>` : ""}
     <div class="reloj">
@@ -134,4 +137,37 @@ export function estadisticas() {
     <h2 class="grupo">Hechas · 14 días</h2>${barras(hechasPorDia, maxH, v => v + " hechas", "hechas")}
     <h2 class="grupo">Tiempo por asignatura · 30 días</h2>${filasP ? `<ul class="horiz">${filasP}</ul>` : `<p class="suave">Aún no hay pomodoros. Empieza uno desde Enfoque o con ▶ en cualquier tarea.</p>`}
     <h2 class="grupo">Avance de los proyectos</h2>${avance ? `<ul class="horiz">${avance}</ul>` : `<p class="suave">Sin proyectos todavía.</p>`}`;
+}
+
+// ---------------- duración de los bloques del Pomodoro ----------------
+const CAMPOS = [["foco", "Concentración", 5, 120, 5, "min"], ["corto", "Descanso", 1, 30, 1, "min"], ["largo", "Descanso largo", 5, 60, 5, "min"], ["cadaLargo", "Descanso largo cada", 2, 8, 1, "bloques"]];
+const PRESETS = [["Clásico", 25, 5, 15, 4], ["Corto", 15, 3, 10, 4], ["Medio", 45, 10, 20, 3], ["Largo", 50, 10, 30, 3]];
+export const resumenPomodoro = () => { const a = S.ajustes; return `${a.foco || 25} min · descanso ${a.corto || 5} · largo ${a.largo || 15} cada ${a.cadaLargo || 4}`; };
+/** Ajustar la longitud de cada bloque. Devuelve true si se guarda (y conEmpezar = pulsó «Empezar»). */
+export function configurarPomodoro({ conEmpezar = false } = {}) {
+  return new Promise(ok => {
+    let hecho = false;
+    const v = Object.fromEntries(CAMPOS.map(([k]) => [k, Number(S.ajustes[k]) || { foco: 25, corto: 5, largo: 15, cadaLargo: 4 }[k]]));
+    const el = hoja(`<div class="conf-pomo"><h2>Bloques del Pomodoro</h2>
+      <div class="chips">${PRESETS.map(([n, f, c, l, k]) => `<button type="button" class="chip" data-preset="${f},${c},${l},${k}">${n} <small>${f}/${c}</small></button>`).join("")}</div>
+      ${CAMPOS.map(([k, n, min, max, paso, u]) => `<div class="paso-num"><span>${n}</span><button class="icono" data-menos="${k}" aria-label="Menos">−</button><b data-v="${k}">${v[k]}</b><small>${u}</small><button class="icono" data-mas="${k}" aria-label="Más">+</button></div>`).join("")}
+      <p class="suave peque" data-total></p>
+      <div class="botones"><button class="btn" data-guardar>Guardar</button>${conEmpezar ? `<button class="btn primario" data-empezar>${icono("play")} Empezar</button>` : ""}</div></div>`, { clase: "peque", alCerrar: () => !hecho && ok(false) });
+    const pintar = () => {
+      for (const [k] of CAMPOS) el.querySelector(`[data-v="${k}"]`).textContent = v[k];
+      const ciclo = v.foco * v.cadaLargo + v.corto * (v.cadaLargo - 1) + v.largo;
+      el.querySelector("[data-total]").textContent = `Una vuelta completa (${v.cadaLargo} bloques con sus descansos) dura ${minutosTexto(ciclo)}.`;
+      el.querySelectorAll("[data-preset]").forEach(b => b.classList.toggle("on", b.dataset.preset === `${v.foco},${v.corto},${v.largo},${v.cadaLargo}`));
+    };
+    el.addEventListener("click", e => {
+      const b = e.target.closest("button"); if (!b) return;
+      const c = CAMPOS.find(([k]) => k === (b.dataset.mas || b.dataset.menos));
+      if (c) { const [k, , min, max, paso] = c; v[k] = Math.max(min, Math.min(max, v[k] + (b.dataset.mas ? paso : -paso))); pintar(); return; }
+      if (b.dataset.preset) { [v.foco, v.corto, v.largo, v.cadaLargo] = b.dataset.preset.split(",").map(Number); pintar(); return; }
+      if (b.dataset.guardar !== undefined || b.dataset.empezar !== undefined) {
+        hecho = true; D.guardarAjustes({ ...v }); el.cerrar(); ok(b.dataset.empezar !== undefined ? "empezar" : true);
+      }
+    });
+    pintar();
+  });
 }

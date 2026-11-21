@@ -4,7 +4,7 @@ import * as D from "./datos.js";
 import { S } from "./datos.js";
 import { $, $$, esc, toast, hoja, hayHoja, vibrar } from "./ui.js";
 import * as V from "./vistas.js";
-import { enfoque, tic, elegirTareaHtml, estadisticas } from "./enfoque.js";
+import { enfoque, tic, elegirTareaHtml, estadisticas, configurarPomodoro, resumenPomodoro } from "./enfoque.js";
 import * as A from "./ajustes.js";
 import * as P from "./pomodoro.js";
 import { anadir, abrirTarea } from "./editor.js";
@@ -398,9 +398,17 @@ function elegirMetodo(t, minSes) {
     const el = hoja(`<div class="elegir-metodo"><h2>¿Cómo quieres estudiar?</h2><p class="suave">${esc(t.titulo)}${minSes ? ` · sesión de ${minutosTexto(minSes)}` : ""}</p>
       <ul class="opciones metodos-lista">${Object.entries(P.METODOS).map(([k, m]) => `<li><button data-m="${k}" class="${k === ultimo ? "on" : ""}">
         <span class="nom-met"><b>${esc(m.nombre)}</b> <small>${esc(m.corto)}</small>${k === ultimo ? ` <i class="ultimo">el último</i>` : ""}</span>
-        <span class="desc-met">${esc(m.desc)}${extra(k, m) ? `<em>${esc(extra(k, m))}</em>` : ""}</span>
+        <span class="desc-met">${esc(m.desc)}${extra(k, m) ? `<em>${esc(extra(k, m))}</em>` : ""}${k === "pomodoro" ? `<span class="ajustar-enlace" data-ajustar>${esc(resumenPomodoro())} · Ajustar</span>` : ""}</span>
         <span class="ir">${icono("play")}</span></button></li>`).join("")}</ul></div>`, { clase: "hoja-metodos", alCerrar: () => !hecho && ok(null) });
-    el.querySelectorAll("[data-m]").forEach(b => (b.onclick = () => { hecho = true; el.cerrar(); ok(b.dataset.m); }));
+    el.querySelectorAll("[data-m]").forEach(b => (b.onclick = async e => {
+      if (e.target.closest("[data-ajustar]")) {  // ajustar la duración de los bloques y empezar desde ahí
+        const r = await configurarPomodoro({ conEmpezar: true });
+        if (r === "empezar") { hecho = true; el.cerrar(); ok("pomodoro"); }
+        else if (r) el.querySelector("[data-ajustar]").textContent = resumenPomodoro() + " · Ajustar";
+        return;
+      }
+      hecho = true; el.cerrar(); ok(b.dataset.m);
+    }));
   });
 }
 function alFoco(id) {
@@ -483,6 +491,7 @@ v.addEventListener("click", async e => {
   if (d.tipo) { P.elegirTipo(d.tipo); return; }
   if (d.modo) { P.elegirModo(d.modo); return; }
   if (d.minutos) { P.elegirMinutos(d.minutos); return; }
+  if (d.ajustarPomo !== undefined) { if (await configurarPomodoro()) { P.elegirModo(P.estado().modo); pintar(); } return; }
   if (d.minutosOtro !== undefined) { const n = await pedirTexto("¿Cuántos minutos?", String(P.estado().minutos || 45), { boton: "Listo" }); if (n && Number(n) > 0) P.elegirMinutos(n); return; }
   if (d.infoMetodos !== undefined) {
     hoja(`<div class="info-metodos"><h2>Métodos de estudio</h2>${Object.values(P.METODOS).map(m => `<h3>${esc(m.nombre)} <span class="suave">${esc(m.corto)}</span></h3><p>${esc(m.desc)}</p>`).join("")}

@@ -20,7 +20,7 @@ const aj = k => Number(S.ajustes[k]) || { foco: 25, corto: 5, largo: 15, cadaLar
  * flow = el descanso sale de lo estudiado (una quinta parte); sinDescanso = un solo bloque.
  */
 export const METODOS = {
-  pomodoro: { nombre: "Pomodoro", corto: "25/5", desc: "Bloques cortos de concentración con descansos; cada cuatro, uno largo. Para cuando cuesta arrancar.", foco: () => aj("foco"), descanso: () => aj("corto"), largo: () => aj("largo"), cada: () => aj("cadaLargo") },
+  pomodoro: { nombre: "Pomodoro", get corto() { return `${aj("foco")}/${aj("corto")}`; }, desc: "Bloques de concentración con descansos; cada pocos bloques, uno largo. La duración la eliges tú (25/5 es el clásico).", foco: () => aj("foco"), descanso: () => aj("corto"), largo: () => aj("largo"), cada: () => aj("cadaLargo") },
   "52-17": { nombre: "52/17", corto: "52/17", desc: "52 minutos a fondo y 17 de descanso de verdad. Va bien para tandas de problemas.", foco: () => 52, descanso: () => 17 },
   "90-20": { nombre: "Bloque profundo", corto: "90/20", desc: "Un bloque largo (el ritmo natural de la concentración, unos 90 min) y 20 de descanso. Para temas difíciles o repasos largos.", foco: () => 90, descanso: () => 20 },
   flow: { nombre: "Flowtime", corto: "Flow", desc: "Estudias sin reloj hasta que notes que bajas el ritmo. Al parar, descansas una quinta parte de lo que has estudiado.", libre: true, flow: true },

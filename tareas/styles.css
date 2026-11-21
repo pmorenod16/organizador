@@ -693,3 +693,17 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .metodos-lista .desc-met em { display: block; font-style: normal; color: var(--texto); font-weight: 550; margin-top: 3px; }
 .metodos-lista .ir { grid-area: ir; width: 36px; height: 36px; border-radius: 50%; background: var(--acento); color: var(--acento-texto); display: grid; place-items: center; }
 .metodos-lista .ir .ico { width: 14px; height: 14px; fill: currentColor; }
+/* duración de los bloques del Pomodoro */
+.ajustar-pomo { border: 0; background: var(--suave2); border-radius: 999px; padding: 6px 14px; font-size: .85rem; color: var(--suave); margin: -2px 0 10px; display: inline-flex; gap: 8px; align-items: center; }
+.ajustar-pomo span { color: var(--texto); font-weight: 600; }
+.ajustar-pomo:disabled { opacity: .7; }
+.ajustar-enlace { display: inline-block; margin-top: 6px; color: var(--texto); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; font-size: .82rem; }
+.conf-pomo h2 { margin: 2px 0 12px; }
+.conf-pomo .chips { margin-bottom: 10px; }
+.conf-pomo .chip { padding: 6px 12px; border-radius: 999px; font-size: .85rem; }
+.conf-pomo .chip small { color: var(--suave); margin-left: 3px; }
+.paso-num { display: grid; grid-template-columns: 1fr 40px 52px 54px 40px; align-items: center; gap: 4px; padding: 8px 0; border-bottom: 1px solid var(--linea); }
+.paso-num b { text-align: center; font-size: 1.25rem; font-variant-numeric: tabular-nums; }
+.paso-num small { color: var(--suave); }
+.paso-num .icono { width: 40px; height: 40px; border-radius: 50%; background: var(--suave2); font-size: 1.3rem; }
+.conf-pomo .botones .btn { flex: 1; }
