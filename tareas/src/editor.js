@@ -7,6 +7,7 @@ import { hoyISO, sumarDias, fechaBonita, minutosTexto } from "./fechas.js";
 import { textoRepetir, hijosPorPadre, compararManual } from "./logica.js";
 import { colorPrioridad, icono, proyectoDe } from "./lista.js";
 import * as Cal from "./calendarios.js";
+import * as Voz from "./voz.js";
 import { minutosEntre } from "./sesiones.js";
 import { elegirFecha, elegirPrioridad, elegirAviso, elegirEtiquetas, elegirProyecto, menu, textoAviso } from "./selectores.js";
 
@@ -26,9 +27,11 @@ export function anadir(contexto = {}) {
       <div class="chips-opc" data-chips></div>
       <div class="pie-rapido">
         <button type="button" class="chip-proy" data-proy></button>
+        <span class="sep"></span>
+        ${Voz.hayVoz() ? `<button type="button" class="microfono" data-voz aria-label="Dictar la tarea">${icono("micro")}</button>` : ""}
         <button class="enviar" aria-label="Añadir tarea">${icono("enviar")}</button>
       </div>
-      <p class="truco suave peque">Truco: escribe «mañana 18:00», «cada lunes», «#asignatura» o «p1» en el nombre.</p>
+      <p class="truco suave peque" data-truco>Escribe o dicta: «Problemes 4-6 mañana a las seis de la tarde de teoria de circuits, prioridad alta».</p>
     </form>`, { clase: "hoja-rapido" });
   const f = $("form", el), ta = f.t;
   const actual = () => {
@@ -67,10 +70,9 @@ export function anadir(contexto = {}) {
     else if (b.dataset.proy !== undefined) { const r = await elegirProyecto(a.proyectoId, a.seccion); if (r) Object.assign(st, r); }
     pintar(); ta.focus();
   });
-  f.onsubmit = e => {
-    e.preventDefault();
+  const crear = () => {
     const a = actual();
-    if (!a.r.titulo) return;
+    if (!a.r.titulo) return null;
     const t = D.nuevaTarea({
       titulo: a.r.titulo, notas: f.d.value.trim(), proyectoId: padre ? padre.proyectoId : a.proyectoId, seccion: padre ? null : a.seccion,
       padreId: padre?.id || null, fecha: a.fecha ?? (padre ? padre.fecha : null), hora: a.hora, repetir: a.repetir,
@@ -79,12 +81,37 @@ export function anadir(contexto = {}) {
     });
     D.guardarTarea(t);
     vibrar();
-    toast(`Añadida a ${proyectoDe(t.proyectoId)?.nombre || "Bandeja de entrada"}${t.fecha ? " · " + fechaBonita(t.fecha) : ""}`);
     ta.value = ""; f.d.value = ""; st.etiquetas = []; st.recordatorios = null;
-    pintar(); ta.focus();
+    pintar();
+    return t;
   };
+  const avisoCreada = (t, deshacer) => toast(`Añadida a ${proyectoDe(t.proyectoId)?.nombre || "Bandeja de entrada"}${t.fecha ? " · " + fechaBonita(t.fecha) + (t.hora ? " " + t.hora : "") : ""}`, deshacer ? { accion: "Deshacer", alPulsar: () => D.borrarTarea(t.id), ms: 6000 } : {});
+  f.onsubmit = e => {
+    e.preventDefault();
+    const t = crear(); if (!t) return;
+    avisoCreada(t); ta.focus();
+  };
+  // dictar: lo que se oye va apareciendo en el cuadro; al terminar se crea la tarea (con «Deshacer» por si se ha entendido mal)
+  const micro = el.querySelector("[data-voz]");
+  const dictar = async () => {
+    if (micro.classList.contains("escuchando")) { Voz.parar(); return; }
+    micro.classList.add("escuchando"); el.querySelector("[data-truco]").textContent = "Escuchando… di la tarea con su fecha, hora, prioridad y asignatura.";
+    try {
+      const texto = await Voz.escuchar({ alParcial: x => { ta.value = x; pintar(); } });
+      if (!texto) { toast(Voz.MENSAJES.silencio); return; }
+      ta.value = texto; pintar();
+      await new Promise(r => setTimeout(r, 700)); // un momento para ver cómo lo ha entendido
+      const t = crear(); if (t) avisoCreada(t, true);
+    } catch (e) {
+      toast(Voz.MENSAJES[e.message] || "No se ha podido usar el micrófono (" + e.message + ").", e.message === "apk-viejo" ? { accion: "Descargar", alPulsar: () => (location.href = "https://github.com/pmorenod16/organizador/releases/download/tasca/tasca.apk"), ms: 9000 } : {});
+    } finally {
+      micro.classList.remove("escuchando"); el.querySelector("[data-truco]").textContent = "Pulsa el micro para dictar otra, o escribe.";
+    }
+  };
+  micro?.addEventListener("click", dictar);
   pintar();
-  setTimeout(() => ta.focus(), 60);
+  if (contexto.dictar && micro) setTimeout(dictar, 250);
+  else setTimeout(() => ta.focus(), 60);
 }
 
 // ---------------- ficha de la tarea ----------------

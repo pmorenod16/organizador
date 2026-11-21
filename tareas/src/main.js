@@ -341,7 +341,14 @@ function contextoAnadir() {
   if (UI.ruta === "hoy") return { fecha: hoyISO() };
   return {};
 }
-$("#btnAnadir").onclick = () => anadir(contextoAnadir());
+// + : tocar = escribir; mantener pulsado = dictar con la voz
+{
+  const fab = $("#btnAnadir"); let t = 0, largo = false;
+  fab.addEventListener("pointerdown", () => { largo = false; t = setTimeout(() => { largo = true; vibrar(25); anadir({ ...contextoAnadir(), dictar: true }); }, 450); });
+  for (const ev of ["pointerup", "pointerleave", "pointercancel"]) fab.addEventListener(ev, () => clearTimeout(t));
+  fab.addEventListener("contextmenu", e => e.preventDefault());
+  fab.onclick = () => { if (!largo) anadir(contextoAnadir()); };
+}
 $("#abajo").addEventListener("click", e => { if (e.target.closest("[data-anadir-abajo]")) anadir(contextoAnadir()); });
 let destinoImportar = null;
 const abrirImportar = (destino = null) => { destinoImportar = destino; $("#archivoImportar").click(); };

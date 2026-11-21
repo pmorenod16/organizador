@@ -45,6 +45,7 @@ export function icono(nombre) {
     grafica: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
     importar: '<path d="M12 3v12M7 10l5 5 5-5M5 21h14"/>',
     enviar: '<path d="M5 12h14M13 6l6 6-6 6"/>',
+    micro: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
     lista: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
     seccion: '<path d="M4 6h16M4 12h10M4 18h6"/>',
     duracion: '<path d="M10 2h4M12 14l3-3"/><circle cx="12" cy="14" r="8"/>',
