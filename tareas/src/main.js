@@ -14,8 +14,8 @@ import { ruido, volumenRuido } from "./sonido.js";
 import { esNativo, alTocarAviso } from "./nativo.js";
 import { hoyISO, sumarDias } from "./fechas.js";
 import { deVista } from "./logica.js";
+import * as Act from "./actualizar.js";
 
-export const APP_VERSION = "2026.11.21";
 const PANTALLAS = ["carga", "login", "sinAcceso", "app"];
 const mostrar = id => PANTALLAS.forEach(p => ($("#" + p).hidden = p !== id));
 const fallo = m => { $("#cargaError").textContent = String(m).slice(0, 300); };
@@ -28,20 +28,8 @@ try { tema(localStorage.getItem("tasca.tema") || "auto"); } catch {}
 // ---------- service worker y actualizaciones ----------
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
 navigator.serviceWorker?.addEventListener("message", e => { if (e.data?.tarea) abrirTarea(e.data.tarea, { alFoco }); });
-const APK_REL = "https://api.github.com/repos/pmorenod16/organizador/releases/tags/tasca";
-{ const q = new URLSearchParams(location.search).get("apk"); if (q) try { localStorage.setItem("tasca.apk", q); } catch {} }
-async function comprobarApk() {
-  if (!esNativo()) return;
-  try {
-    const r = await fetch(APK_REL, { cache: "no-store" });
-    const n = r.ok ? Number(((await r.json()).name || "").split(".").pop()) : 0;
-    const tengo = Number(localStorage.getItem("tasca.apk")) || 0;
-    if (n && tengo && n > tengo && sessionStorage.getItem("tasca.apkOfrecido") !== String(n)) {
-      sessionStorage.setItem("tasca.apkOfrecido", String(n));
-      toast("Hay una versión nueva de la app", { accion: "Descargar", alPulsar: () => (location.href = A.APK_URL), ms: 9000 });
-    }
-  } catch {}
-}
+// actualizarse sola (como el Armario)
+Act.empezar();
 
 // ---------- Firebase ----------
 const FV = "10.12.2";
@@ -111,7 +99,7 @@ window.addEventListener("hashchange", () => { leerRuta(); pintar(); $("#vista").
 D.alCambiar((s, err) => {
   if (err) { if (!s.listo) fallo("No se pueden leer los datos: " + (err.code || err.message)); else toast("Sin permiso o sin conexión con la base de datos"); return; }
   if (!s.listo) return;
-  if (!$("#carga").hidden) { mostrar("app"); comprobarApk(); }
+  if (!$("#carga").hidden) mostrar("app");
   tema(s.ajustes.tema); try { localStorage.setItem("tasca.tema", s.ajustes.tema || "auto"); } catch {}
   pintar();
   reprogramar();
@@ -134,7 +122,7 @@ function pintar() {
     case "hechas": html = V.hechas(); break;
     case "enfoque": html = enfoque(UI); break;
     case "estadisticas": html = estadisticas(); break;
-    case "ajustes": html = A.ajustes({ email: usuario?.email, version: APP_VERSION }); break;
+    case "ajustes": html = A.ajustes({ email: usuario?.email, version: Act.VERSION || "—" }); break;
     default: UI.ruta = "hoy"; html = V.hoy();
   }
   v.innerHTML = html;
@@ -263,6 +251,7 @@ v.addEventListener("click", async e => {
   // ajustes
   if (d.permiso !== undefined) { await A.activarPermiso(); pintar(); return; }
   if (d.exportar !== undefined) return A.exportar();
+  if (d.actualizar !== undefined) return Act.comprobar({ manual: true });
   if (d.salir !== undefined) return salir();
   if (d.ir) location.hash = d.ir;
 });

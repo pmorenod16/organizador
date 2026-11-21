@@ -46,14 +46,17 @@ export function ajustes({ email, version }) {
   </section>
   <section class="caja">
     <h2>App del móvil</h2>
-    ${esNativo() ? `<p class="suave">Estás usando la app de Android. Se actualiza sola.</p>` : `<p class="suave">Para Android, descarga el APK e instálalo (permite instalar apps de esta fuente si lo pide). También puedes añadir esta web a la pantalla de inicio desde el menú del navegador.</p><a class="btn" href="${APK_URL}">Descargar el APK</a>`}
+    ${esNativo() ? `<p class="suave">Estás usando la app de Android. Se actualiza sola, como la web.</p>` : `<p class="suave">Para Android, descarga el APK e instálalo (permite instalar apps de esta fuente si lo pide). También puedes añadir esta web a la pantalla de inicio desde el menú del navegador.</p><a class="btn" href="${APK_URL}">Descargar el APK</a>`}
   </section>
   <section class="caja">
     <h2>Tus datos</h2>
     <div class="botones-izq"><button class="btn" data-exportar>Descargar copia (JSON)</button><label class="btn archivo">Restaurar copia<input type="file" accept=".json,application/json" data-restaurar hidden></label><button class="btn" data-ir="#/hechas">Ver hechas</button></div>
     <p class="suave peque">Todo se guarda en tu Firebase y se sincroniza entre el móvil y la web. Funciona sin conexión y se sube al volver.</p>
   </section>
-  <section class="caja"><button class="btn peligro" data-salir>Cerrar sesión</button><p class="suave peque">Tasca · versión ${esc(version)}</p></section>`;
+  <section class="caja">
+    <div class="fila-ajuste"><span>Versión <code>${esc(version)}</code></span><button class="btn peque" data-actualizar>Buscar actualizaciones</button></div>
+    <p class="suave peque">Se actualiza sola al abrirla, al volver a ella y cada 30 minutos.</p>
+    <button class="btn peligro" data-salir>Cerrar sesión</button></section>`;
 }
 
 /** Guardar un ajuste desde un input */

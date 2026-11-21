@@ -1,5 +1,5 @@
 // Service worker de Tasca: abre sin conexión con lo último que tenía y se actualiza sola.
-const CACHE = "tasca-v1";
+const CACHE = "tasca-v2";
 const SHELL = ["./", "./index.html", "./styles.css?v=1", "./src/main.js?v=1", "./icon.svg", "./icon-192.png", "./manifest.webmanifest", "../config.js", "../capacitor-core.js"];
 
 self.addEventListener("install", e => {
@@ -13,6 +13,7 @@ self.addEventListener("fetch", e => {
   const req = e.request;
   if (req.method !== "GET") return;
   const url = new URL(req.url);
+  if (url.pathname.endsWith("/version.json")) return; // nunca de la caché: es lo que avisa de las versiones nuevas
   if (url.origin === self.location.origin) {
     e.respondWith(fetch(req, { cache: "no-cache" }).then(res => {
       if (res.ok) { const copia = res.clone(); caches.open(CACHE).then(c => c.put(req, copia)); }

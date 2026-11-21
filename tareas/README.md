@@ -18,6 +18,8 @@ Usa el mismo Firebase, la misma cuenta y la misma clave de firma que el Organiza
 | `src/avisos.js`, `src/nativo.js` | Recordatorios (APK: del sistema; web: con la pestaña abierta) |
 | `app/` | Proyecto Capacitor del APK (`.github/workflows/android-tasca.yml`) |
 
+Antes de publicar: `node tareas/scripts/version.mjs` (la app se recarga sola cuando cambia `version.json`; los tests avisan si se olvida).
+
 Tests: `cd tareas && npm test`. Interfaz con Firebase falso: `python3 tareas/test/navegador/probar.py . /tmp/capturas`.
 
 Atajos en el ordenador: `Q` añadir · `/` buscar · `F` enfoque · `Esc` cerrar.
