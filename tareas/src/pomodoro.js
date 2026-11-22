@@ -3,14 +3,14 @@
 import * as D from "./datos.js";
 import { S } from "./datos.js";
 import { campana } from "./sonido.js";
-import { esNativo, programarNativos, pantallaEncendida } from "./nativo.js";
+import { esNativo, programarNativos, pantallaEncendida, llamar } from "./nativo.js";
 import { notificarWeb } from "./avisos.js";
 
 const LS = "tasca.pomodoro";
-const base = { modo: "foco", estado: "parado", fin: 0, restante: 0, inicio: 0, tareaId: null, proyectoId: null, etiqueta: "", ciclos: 0, tipo: "pomodoro", acumulado: 0, minutos: 45, descansoFlow: 5 };
+const base = { modo: "foco", estado: "parado", fin: 0, restante: 0, inicio: 0, tareaId: null, proyectoId: null, etiqueta: "", ciclos: 0, tipo: "pomodoro", acumulado: 0, minutos: 45, descansoFlow: 5, plan: null, hechos: 0 };
 let P = (() => { try { return { ...base, ...JSON.parse(localStorage.getItem(LS) || "{}") }; } catch { return { ...base }; } })();
 const subs = new Set();
-const guardar = () => { try { localStorage.setItem(LS, JSON.stringify(P)); } catch {} subs.forEach(f => f(P)); };
+const guardar = () => { try { localStorage.setItem(LS, JSON.stringify(P)); } catch {} subs.forEach(f => f(P)); reloj(); };
 export const suscribir = f => { subs.add(f); f(P); return () => subs.delete(f); };
 export const estado = () => P;
 
@@ -48,10 +48,13 @@ export function elegirTarea(id) { P.tareaId = id || null; if (id) { P.proyectoId
 export function elegirLibre(proyectoId, etiqueta = "") { P.tareaId = null; P.proyectoId = proyectoId || null; P.etiqueta = (etiqueta || "").trim(); guardar(); }
 export function elegirTipo(tipo) { if (P.estado !== "parado" || !METODOS[tipo]) return; P.tipo = tipo; P.modo = "foco"; P.ciclos = 0; guardar(); }
 export function elegirModo(modo) { if (P.estado !== "parado") return; P.modo = modo; guardar(); }
+/** Sesión de varios bloques seguidos (p. ej. 2 h = 4 pomodoros): se encadenan solos con sus descansos */
+export function planificar(n) { P.plan = n && n > 1 ? n : null; P.hechos = 0; guardar(); }
 export function elegirMinutos(n) { if (P.estado !== "parado") return; P.minutos = Math.max(1, Math.min(600, Number(n) || 45)); guardar(); }
 
 export function empezar(tareaId) {
   if (tareaId !== undefined) elegirTarea(tareaId);
+  if (P.plan && P.hechos >= P.plan) { P.plan = null; P.hechos = 0; } // la sesión anterior ya acabó
   P.inicio = Date.now(); P.empezado = Date.now(); P.estado = "corriendo"; P.acumulado = 0;
   if (!subiendo()) P.fin = Date.now() + duracion(P.modo);
   programarFin(); pantallaEncendida(true); guardar();
@@ -71,7 +74,7 @@ const estudiado = () => Math.round((subiendo() ? tiempo() : duracion("foco") - t
 /** Parar. Si llevabas 5 min o más estudiando, se guarda lo hecho. */
 export function parar() {
   if (P.modo === "foco" && P.estado !== "parado") { const m = estudiado(); if (m >= 5) registrar(m, met().libre ? P.tipo : "parcial"); }
-  Object.assign(P, { estado: "parado", fin: 0, restante: 0, acumulado: 0, modo: "foco" });
+  Object.assign(P, { estado: "parado", fin: 0, restante: 0, acumulado: 0, modo: "foco", plan: null, hechos: 0 });
   programarFin(); pantallaEncendida(false); guardar();
 }
 /** Flowtime: dejar de estudiar y empezar el descanso (una quinta parte de lo estudiado) */
@@ -85,42 +88,86 @@ export function descansar() {
 }
 export function saltar() { Object.assign(P, { estado: "parado", modo: "foco", acumulado: 0 }); programarFin(); guardar(); }
 
-function registrar(minutos, tipo = P.tipo) {
+function registrar(minutos, tipo = P.tipo, inicio = P.empezado) {
   const t = P.tareaId && S.tareas.find(x => x.id === P.tareaId);
-  D.guardarFoco({ inicio: P.empezado || Date.now() - minutos * 60000, minutos, tipo, metodo: P.tipo, tareaId: t?.id || null, proyectoId: t?.proyectoId || P.proyectoId || null, titulo: t?.titulo || P.etiqueta || null });
+  D.guardarFoco({ inicio: inicio || Date.now() - minutos * 60000, minutos, tipo, metodo: P.tipo, tareaId: t?.id || null, proyectoId: t?.proyectoId || P.proyectoId || null, titulo: t?.titulo || P.etiqueta || null });
   if (t && tipo === "pomodoro") D.cambiarTarea(t.id, { pomos: (t.pomos || 0) + 1 });
 }
 
-/** Comprueba si ha terminado una cuenta atrás (cada medio segundo y al volver a la app). */
+/** Pasa al siguiente tramo (bloque → descanso → bloque…) a la hora en que terminó el anterior. */
+function avanzar() {
+  const finAnt = P.fin, eraFoco = P.modo === "foco", m = met();
+  let terminada = false;
+  if (eraFoco) {
+    registrar(Math.round(duracion("foco") / 60000), P.tipo, finAnt - duracion("foco"));
+    P.ciclos++;
+    if (P.plan) P.hechos++;
+    terminada = !!m.sinDescanso || (P.plan && P.hechos >= P.plan);
+    P.modo = terminada ? "foco" : m.cada && P.ciclos % m.cada() === 0 ? "largo" : "corto";
+  } else P.modo = "foco";
+  // en una sesión planificada el descanso empieza solo; el siguiente bloque, solo si lo tienes activado
+  const auto = !terminada && !m.libre && (eraFoco ? P.plan || S.ajustes.autoDescanso : S.ajustes.autoFoco);
+  P.estado = "parado"; P.acumulado = 0; P.fin = 0;
+  if (auto) { P.inicio = finAnt; P.empezado = finAnt; P.fin = finAnt + duracion(P.modo); P.estado = "corriendo"; }
+  return { eraFoco, terminada, finAnt };
+}
+/** Comprueba si ha terminado una cuenta atrás (cada medio segundo y al volver a la app). Si la app estaba
+ *  cerrada, se pone al día tramo a tramo, como si hubiera seguido contando. */
 export function comprobar({ silencioso = false } = {}) {
   if (subiendo() || P.estado !== "corriendo" || Date.now() < P.fin) return false;
-  const eraFoco = P.modo === "foco", m = met();
-  if (eraFoco) {
-    registrar(Math.round(duracion("foco") / 60000), P.tipo);
-    P.ciclos++;
-    P.modo = m.sinDescanso ? "foco" : m.cada && P.ciclos % m.cada() === 0 ? "largo" : "corto";
-  } else P.modo = "foco";
-  const tarde = Date.now() - P.fin > 60000; // la app estaba cerrada: no se encadena nada
-  const auto = !m.sinDescanso && !m.libre && (eraFoco ? S.ajustes.autoDescanso : S.ajustes.autoFoco);
-  P.estado = "parado"; P.fin = 0; P.acumulado = 0;
-  if (auto && !tarde) { P.fin = Date.now() + duracion(P.modo); P.inicio = Date.now(); P.estado = "corriendo"; P.empezado = Date.now(); }
-  else pantallaEncendida(false);
+  let r = null;
+  for (let i = 0; i < 20 && P.estado === "corriendo" && !subiendo() && Date.now() >= P.fin; i++) r = avanzar();
+  if (P.estado !== "corriendo") pantallaEncendida(false);
   programarFin(); guardar();
-  if (!silencioso && !tarde) {
-    if (S.ajustes.sonidoFin !== false) campana(eraFoco ? 3 : 2);
+  const m = met(), reciente = Date.now() - r.finAnt < 60000;
+  const texto = r.terminada && P.plan ? "¡Sesión terminada!" : textoFin(r.eraFoco, m)[0];
+  if (!silencioso && reciente) {
+    if (S.ajustes.sonidoFin !== false) campana(r.eraFoco ? 3 : 2);
     try { navigator.vibrate?.([200, 100, 200]); } catch {}
-    if (document.hidden && !esNativo()) notificarWeb(...textoFin(eraFoco, m), "pomodoro");
+    if (document.hidden && !esNativo()) notificarWeb(texto, r.eraFoco ? (r.terminada ? "Buen trabajo." : `Descanso hasta las ${hora(P.fin)}.`) : siguienteTexto(), "pomodoro");
   }
-  return { eraFoco, sinDescanso: m.sinDescanso, texto: textoFin(eraFoco, m)[0] };
+  return { eraFoco: r.eraFoco, sinDescanso: m.sinDescanso, terminada: r.terminada, texto };
 }
+const hora = ms => new Date(ms).toTimeString().slice(0, 5);
+const siguienteTexto = () => (P.plan ? `Toca para empezar el bloque ${Math.min(P.hechos + 1, P.plan)} de ${P.plan}.` : "Vuelta a concentrarse.");
 const textoFin = (eraFoco, m = met()) => eraFoco ? (m.sinDescanso ? ["¡Tiempo!", "Has terminado el bloque."] : ["¡Bloque terminado!", "Toca descansar un poco."]) : ["Se acabó el descanso", "Vuelta a concentrarse."];
 
-// aviso del sistema al acabar (APK), aunque la app esté en segundo plano
+// avisos del sistema (APK), aunque la app esté en segundo plano: fin del bloque y fin del descanso,
+// este con el botón «Empezar el siguiente bloque»
 function programarFin() {
   if (!esNativo()) return;
-  const [titulo, texto] = textoFin(P.modo === "foco");
-  const avisos = !subiendo() && P.estado === "corriendo" ? [{ id: 3000, at: new Date(P.fin), titulo, texto, extra: { vista: "enfoque" } }] : [];
+  const avisos = [];
+  if (!subiendo() && P.estado === "corriendo") {
+    const m = met();
+    if (P.modo === "foco") {
+      const ultimo = m.sinDescanso || (P.plan && P.hechos + 1 >= P.plan);
+      const conDescanso = !ultimo && !m.libre && (P.plan || S.ajustes.autoDescanso);
+      const modoD = m.cada && (P.ciclos + 1) % m.cada() === 0 ? "largo" : "corto";
+      const finD = P.fin + duracion(modoD);
+      avisos.push({ id: 3000, at: new Date(P.fin), titulo: ultimo && P.plan ? "¡Sesión terminada!" : textoFin(true, m)[0], texto: ultimo ? "Buen trabajo." : conDescanso ? `Descanso hasta las ${hora(finD)}.` : "Toca descansar un poco.", extra: { vista: "enfoque" } });
+      if (conDescanso) avisos.push({ id: 3001, at: new Date(finD), titulo: "Se acabó el descanso", texto: P.plan ? `Bloque ${P.hechos + 2} de ${P.plan}: pulsa «Empezar» para seguir.` : "Pulsa «Empezar» para el siguiente bloque.", extra: { vista: "enfoque", accion: "siguiente" }, tipoAccion: "SIGUIENTE" });
+    } else {
+      avisos.push({ id: 3001, at: new Date(P.fin), titulo: "Se acabó el descanso", texto: P.plan ? `Bloque ${P.hechos + 1} de ${P.plan}: pulsa «Empezar» para seguir.` : "Pulsa «Empezar» para el siguiente bloque.", extra: { vista: "enfoque", accion: "siguiente" }, tipoAccion: "SIGUIENTE" });
+    }
+  }
   programarNativos(3000, 3010, avisos, "pomodoro").catch(e => console.warn(e));
+}
+
+/** Notificación fija con el reloj mientras haya algo en marcha (APK: lo cuenta Android). */
+let ultimoReloj = "";
+function reloj() {
+  if (!esNativo()) return;
+  const t = P.tareaId && S.tareas.find(x => x.id === P.tareaId);
+  const que = t?.titulo || P.etiqueta || "Estudio libre";
+  const bloque = P.plan ? ` · bloque ${Math.min(P.hechos + (P.modo === "foco" ? 1 : 0), P.plan)} de ${P.plan}` : "";
+  const nombre = P.modo === "foco" ? met().nombre : NOMBRES[P.modo];
+  let args = null;
+  if (P.estado === "corriendo") args = subiendo() ? { titulo: nombre + bloque, texto: que, base: P.inicio - P.acumulado, cuentaAtras: false } : { titulo: nombre + bloque, texto: P.modo === "foco" ? `${que} · hasta las ${hora(P.fin)}` : `Hasta las ${hora(P.fin)}`, base: P.fin, cuentaAtras: true };
+  else if (P.estado === "pausa") args = { titulo: `En pausa · ${nombre}${bloque}`, texto: `${que} · ${subiendo() ? "llevas" : "quedan"} ${formato(tiempo())}`, base: Date.now(), pausa: true };
+  const clave = JSON.stringify(args);
+  if (clave === ultimoReloj) return;
+  ultimoReloj = clave;
+  (args ? llamar("Temporizador", "mostrar", args) : llamar("Temporizador", "ocultar")).catch(() => {}); // APK antiguo: sin el plugin
 }
 
 export const formato = ms => { const s = Math.round(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), x = s % 60; return (h ? h + ":" + String(m).padStart(2, "0") : String(m).padStart(2, "0")) + ":" + String(x).padStart(2, "0"); };

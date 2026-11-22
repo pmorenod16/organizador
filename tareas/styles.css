@@ -1,9 +1,9 @@
 :root {
   /* tonos suaves: gris cálido, tinta casi negra y colores apagados (como el Armario) */
   --fondo: #F3F3F1; --panel: #FFFFFF; --texto: #1D1E22; --suave: #75777F; --suave2: #EAEAE6; --linea: rgba(20, 22, 28, .08);
-  --acento: #2A2C31; --acento-claro: #E8E8E4; --acento-texto: #FFFFFF; --resalte: #B5754F;
-  --p1: #C4625A; --p2: #C8964F; --p3: #6F8DB4; --p4: #B0B2B8;
-  --verde: #5A8F6E; --rojo: #B5524C; --morado: #8C80B4; --naranja: #B97B52;
+  --acento: #2A2C31; --acento-claro: #E8E8E4; --acento-texto: #FFFFFF; --resalte: #C6A690; --resalte-texto: #8C6E5A;
+  --p1: #C26E66; --p2: #CBA672; --p3: #7F98BA; --p4: #B0B2B8;
+  --verde: #6C9A80; --rojo: #B8605A; --morado: #9690B8; --naranja: #C2A07F;
   --sombra: 0 1px 2px rgba(20, 22, 28, .04), 0 8px 24px -12px rgba(20, 22, 28, .16);
   --sombra-g: 0 2px 6px rgba(20, 22, 28, .05), 0 24px 56px -20px rgba(20, 22, 28, .28);
   --radio: 18px; --menu: 264px;
@@ -707,3 +707,17 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .paso-num small { color: var(--suave); }
 .paso-num .icono { width: 40px; height: 40px; border-radius: 50%; background: var(--suave2); font-size: 1.3rem; }
 .conf-pomo .botones .btn { flex: 1; }
+
+/* 22/11/2026: color más apacible (el naranja, más suave) y horario del día en orden */
+.reloj circle { stroke-width: 7; }
+.abajo a.en-marcha { color: var(--resalte-texto); }
+.ajustar-pomo span, .metodos-lista .ultimo { color: var(--resalte-texto); }
+.ciclos.plan { gap: 8px; }
+.ciclos.plan i { width: 10px; height: 10px; }
+.ciclos i.en-curso { background: transparent; box-shadow: inset 0 0 0 2px var(--resalte); }
+.horario .evento-fila button { width: 100%; display: flex; align-items: baseline; gap: 10px; border: 0; text-align: left; background: color-mix(in oklab, var(--c) 8%, var(--panel)); border-left: 3px solid color-mix(in oklab, var(--c) 70%, var(--suave)); border-radius: 12px; padding: 8px 10px; margin: 4px 0; }
+.horario .evento-fila .hora-ev { font-size: .8rem; color: var(--suave); white-space: nowrap; min-width: 82px; font-variant-numeric: tabular-nums; }
+.horario .evento-fila .tit-ev { flex: 1; font-size: .92rem; min-width: 0; }
+.horario .evento-fila .tit-ev small { display: block; color: var(--suave); font-size: .78rem; }
+@media (prefers-color-scheme: dark) { :root:not([data-tema="claro"]) { --resalte-texto: #D3B7A3; } }
+:root[data-tema="oscuro"] { --resalte-texto: #D3B7A3; }

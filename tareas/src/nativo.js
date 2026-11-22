@@ -20,6 +20,7 @@ async function preparar() {
     if (perm.display !== "granted") await llamar("LocalNotifications", "requestPermissions");
     await llamar("LocalNotifications", "createChannel", { id: "recordatorios", name: "Recordatorios", description: "Avisos de tus tareas", importance: 5, vibration: true });
     await llamar("LocalNotifications", "createChannel", { id: "pomodoro", name: "Pomodoro", description: "Fin del pomodoro o del descanso", importance: 5, vibration: true });
+    try { await llamar("LocalNotifications", "registerActionTypes", { types: [{ id: "SIGUIENTE", actions: [{ id: "empezar", title: "Empezar el siguiente bloque", foreground: true }] }] }); } catch {}
     return true;
   })().catch(e => { canal = null; throw e; });
 }
@@ -33,14 +34,14 @@ export async function programarNativos(desde, hasta, avisos, canalId) {
   if (viejos.length) await llamar("LocalNotifications", "cancel", { notifications: viejos.map(n => ({ id: n.id })) });
   if (!avisos.length) return;
   await llamar("LocalNotifications", "schedule", {
-    notifications: avisos.map(a => ({ id: a.id, channelId: canalId, title: a.titulo, body: a.texto, extra: a.extra || null, schedule: { at: a.at, allowWhileIdle: true } })),
+    notifications: avisos.map(a => ({ id: a.id, channelId: canalId, title: a.titulo, body: a.texto, extra: a.extra || null, schedule: { at: a.at, allowWhileIdle: true }, ...(a.tipoAccion ? { actionTypeId: a.tipoAccion } : {}) })),
   });
 }
 
 /** Al tocar un aviso del sistema */
 export async function alTocarAviso(fn) {
   if (!esNativo()) return;
-  try { await llamar("LocalNotifications", "addListener", "localNotificationActionPerformed", e => fn(e?.notification?.extra || {})); } catch (e) { console.warn(e); }
+  try { await llamar("LocalNotifications", "addListener", "localNotificationActionPerformed", e => fn(e?.notification?.extra || {}, e?.actionId)); } catch (e) { console.warn(e); }
 }
 
 /** Mantener la pantalla encendida durante el pomodoro (web: Wake Lock) */

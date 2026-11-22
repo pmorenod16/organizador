@@ -38,10 +38,11 @@ export function enfoque(ui) {
     <div class="reloj">
       <svg viewBox="0 0 240 240" aria-hidden="true"><circle cx="120" cy="120" r="${R}" class="pista"/><circle cx="120" cy="120" r="${R}" class="avance" data-avance style="stroke-dasharray:${CIRC} ${CIRC}"/></svg>
       <div class="centro-reloj"><div class="tiempo" data-tiempo>${P.formato(P.tiempo())}</div><div class="suave" data-estado>${etiquetaReloj}${e.estado === "pausa" ? " · en pausa" : ""}</div>
-      ${M.cada ? `<div class="ciclos">${Array.from({ length: M.cada() }, (_, i) => `<i class="${i < e.ciclos % M.cada() ? "on" : ""}"></i>`).join("")}</div>` : ""}</div>
+      ${e.plan ? `<div class="ciclos plan" title="Bloques de la sesión">${Array.from({ length: e.plan }, (_, i) => `<i class="${i < e.hechos ? "on" : i === e.hechos && e.modo === "foco" && !parado ? "en-curso" : ""}"></i>`).join("")}</div><div class="suave peque">${e.hechos >= e.plan ? "Sesión terminada" : `Bloque ${Math.min(e.hechos + (e.modo === "foco" ? 1 : 0), e.plan) || 1} de ${e.plan}`}</div>`
+        : M.cada ? `<div class="ciclos">${Array.from({ length: M.cada() }, (_, i) => `<i class="${i < e.ciclos % M.cada() ? "on" : ""}"></i>`).join("")}</div>` : ""}</div>
     </div>
     <div class="controles">
-      ${parado ? `<button class="btn primario enorme" data-p="empezar">${icono("play")} ${e.modo === "foco" ? "Empezar" : "Empezar descanso"}</button>` : ""}
+      ${parado ? `<button class="btn primario enorme" data-p="empezar">${icono("play")} ${e.modo !== "foco" ? "Empezar descanso" : e.plan && e.hechos > 0 && e.hechos < e.plan ? `Empezar bloque ${e.hechos + 1}` : "Empezar"}</button>` : ""}
       ${!parado && e.tipo === "flow" && e.modo === "foco" ? `<button class="btn primario enorme" data-p="descansar">Descansar</button>` : ""}
       ${e.estado === "corriendo" && !(e.tipo === "flow" && e.modo === "foco") ? `<button class="btn enorme" data-p="pausar">Pausa</button>` : ""}
       ${e.estado === "pausa" ? `<button class="btn primario enorme" data-p="reanudar">Seguir</button>` : ""}

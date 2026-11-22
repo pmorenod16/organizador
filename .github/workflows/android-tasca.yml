@@ -65,6 +65,10 @@ jobs:
           }
           GRADLE
           sed -i "s/versionCode 1$/versionCode ${{ github.run_number }}/; s/versionName \"1.0\"/versionName \"1.${{ github.run_number }}\"/" android/app/build.gradle
+          # plugin propio: notificación con el reloj del Enfoque (cronómetro de Android)
+          DEST=android/app/src/main/java/io/github/pmorenod16/tasca
+          cp android-extra/TemporizadorPlugin.java android-extra/MainActivity.java "$DEST/"
+          grep -q "androidx.core" android/app/build.gradle || echo 'dependencies { implementation "androidx.core:core:1.12.0" }' >> android/app/build.gradle
           # avisos a su hora exacta y permiso de notificaciones
           M=android/app/src/main/AndroidManifest.xml
           sed -i 's#<application#<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <application#' $M

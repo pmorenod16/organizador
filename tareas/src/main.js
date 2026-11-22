@@ -11,7 +11,7 @@ import { anadir, abrirTarea } from "./editor.js";
 import { alternarAbierta, icono } from "./lista.js";
 import { menu, seccionesDe } from "./selectores.js";
 import { pedirTexto, confirmar } from "./ui.js";
-import { reprogramar } from "./avisos.js";
+import { reprogramar, notificarWeb } from "./avisos.js";
 import { ruido, volumenRuido } from "./sonido.js";
 import { esNativo, alTocarAviso } from "./nativo.js";
 import { hoyISO, sumarDias, lunesDe } from "./fechas.js";
@@ -377,9 +377,10 @@ async function estudiar(id) {
     const ciclo = M.foco() + M.descanso();
     const n = Math.max(1, Math.round(minSes / ciclo));
     if (!t.pomosEstimados && tipo === "pomodoro") D.cambiarTarea(id, { pomosEstimados: (t.pomos || 0) + n });
-    UI.sesion = { tareaId: id, ini: ses.ini, fin: ses.fin, titulo: ses.titulo, pomos: tipo === "pomodoro" ? n : null };
-  } else if (ses) UI.sesion = { tareaId: id, ini: ses.ini, fin: ses.fin, titulo: ses.titulo, pomos: null };
-  else UI.sesion = { tareaId: id, fin: null, titulo: null, pomos: tipo === "pomodoro" && t.pomosEstimados ? Math.max(1, t.pomosEstimados - (t.pomos || 0)) : null };
+    UI.sesion = { tareaId: id, ini: ses.ini, fin: ses.fin, titulo: ses.titulo, pomos: null };
+    P.planificar(n); // p. ej. 2 h con 25/5 = 4 bloques seguidos, con sus descansos
+  } else if (ses) { UI.sesion = { tareaId: id, ini: ses.ini, fin: ses.fin, titulo: ses.titulo, pomos: null }; P.planificar(null); }
+  else { UI.sesion = { tareaId: id, fin: null, titulo: null, pomos: null }; P.planificar(null); }
   guardarUI();
   P.elegirModo("foco"); P.empezar(id);
   location.hash = "#/enfoque";
@@ -424,6 +425,14 @@ setInterval(() => {
   const m = $("[data-mini]"); if (m) m.textContent = P.formato(P.tiempo());
   pintarPestanaFoco();
 }, 500);
+// web: al salir de la pestaña con el reloj en marcha, un aviso con cuándo termina (el navegador no deja actualizarlo cada segundo)
+document.addEventListener("visibilitychange", () => {
+  const e = P.estado();
+  if (document.hidden && !esNativo() && e.estado === "corriendo" && !P.subiendo()) {
+    const fin = new Date(e.fin).toTimeString().slice(0, 5);
+    notificarWeb(`${e.modo === "foco" ? P.metodo().nombre : P.NOMBRES[e.modo]} en marcha${e.plan ? ` · bloque ${Math.min(e.hechos + (e.modo === "foco" ? 1 : 0), e.plan)} de ${e.plan}` : ""}`, `Termina a las ${fin} (quedan ${Math.ceil((e.fin - Date.now()) / 60000)} min).`, "reloj");
+  }
+});
 document.addEventListener("visibilitychange", () => { if (!document.hidden) { P.comprobar(); if (S.listo) { pintar(); Cal.recargar(); } } });
 document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && UI.pantallaCompleta) { UI.pantallaCompleta = false; pintar(); } });
 $("#miniFoco").addEventListener("click", e => { const b = e.target.closest("[data-mini-p]"); if (b) { e.preventDefault(); P[b.dataset.miniP](); } });
@@ -603,7 +612,14 @@ v.addEventListener("drop", e => {
 new MutationObserver(() => $$(".tarea", v).forEach(li => (li.draggable = matchMedia("(pointer:fine)").matches))).observe(v, { childList: true });
 
 // avisos del sistema (APK): abrir la tarea al tocarlos
-alTocarAviso(extra => { if (extra.tarea) setTimeout(() => abrirTarea(extra.tarea, FICHA), 400); else if (extra.vista) location.hash = "#/" + extra.vista; });
+alTocarAviso((extra, accion) => {
+  // botón «Empezar el siguiente bloque» del aviso de fin de descanso
+  if (accion === "empezar" || (extra.accion === "siguiente" && accion === "empezar")) {
+    P.comprobar({ silencioso: true });
+    if (P.estado().estado === "parado") { P.elegirModo("foco"); P.empezar(); }
+    location.hash = "#/enfoque"; return;
+  }
+  if (extra.tarea) setTimeout(() => abrirTarea(extra.tarea, FICHA), 400); else if (extra.vista) location.hash = "#/" + extra.vista; });
 // enlace desde un aviso web (?tarea=)
 { const q = new URLSearchParams(location.search).get("tarea"); if (q) D.alCambiar(s => { if (s.listo && q && S.tareas.some(t => t.id === q)) { abrirTarea(q, FICHA); history.replaceState(null, "", location.pathname + location.hash); } }); }
 
