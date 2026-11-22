@@ -63,7 +63,7 @@ public class TascaWidgetEstudio extends AppWidgetProvider {
             v.setOnClickPendingIntent(id(c, "e_parar"), accion(c, "parar", 22));
             v.setOnClickPendingIntent(id(c, "e_reloj"), accion(c, "ver-estudio", 23));
         } else {
-            v.setTextViewText(id(c, "e_ayuda"), terminado ? "Se acabó el bloque. Elige cómo seguir:" : "Empieza a estudiar sin tarea, o toca una tarea de abajo:");
+            v.setTextViewText(id(c, "e_ayuda"), terminado ? "Se acabó el bloque. Elige cómo seguir:" : "Empieza a estudiar sin tarea, o toca una de abajo:");
             int k = 30;
             for (String[] mm : METODOS) v.setOnClickPendingIntent(id(c, mm[1]), accion(c, "metodo:" + mm[0], k++));
         }

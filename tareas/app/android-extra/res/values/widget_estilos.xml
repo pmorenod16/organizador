@@ -9,6 +9,6 @@
         <item name="android:maxLines">1</item>
         <item name="android:ellipsize">end</item>
     </style>
-    <string name="widget_estudio_descripcion">El reloj de estudio, los métodos y las tareas de hoy</string>
+    <string name="widget_estudio_descripcion">El reloj de estudio, los métodos y tus tareas de hoy</string>
     <string name="widget_mini_descripcion">Lo que te queda hoy, en pequeño</string>
 </resources>
