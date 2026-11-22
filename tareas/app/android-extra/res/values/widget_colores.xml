@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="widget_fondo">#F7F6F3</color>
+    <color name="widget_texto">#1D1E22</color>
+    <color name="widget_suave">#7A7C84</color>
+    <color name="widget_resalte">#8E80C4</color>
+    <string name="widget_descripcion">Tus tareas y eventos de hoy, por hora</string>
+</resources>

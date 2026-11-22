@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="wrap_content"
+    android:orientation="horizontal" android:gravity="center_vertical" android:minHeight="44dp">
+    <ImageView android:id="@+id/f_check" android:layout_width="40dp" android:layout_height="40dp"
+        android:padding="10dp" android:src="@drawable/widget_circulo" android:contentDescription="Marcar como hecha" />
+    <ImageView android:id="@+id/f_barra" android:layout_width="40dp" android:layout_height="30dp"
+        android:paddingLeft="17dp" android:paddingRight="17dp" android:src="@drawable/widget_barra" android:visibility="gone" />
+    <LinearLayout android:id="@+id/f_texto" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+        android:orientation="vertical" android:paddingTop="5dp" android:paddingBottom="5dp" android:paddingRight="4dp">
+        <TextView android:id="@+id/f_titulo" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="14sp" android:textColor="@color/widget_texto" android:maxLines="2" android:ellipsize="end" />
+        <TextView android:id="@+id/f_sub" android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:textSize="12sp" android:textColor="@color/widget_suave" android:maxLines="1" android:ellipsize="end" />
+    </LinearLayout>
+</LinearLayout>

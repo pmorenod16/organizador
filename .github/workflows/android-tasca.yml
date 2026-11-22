@@ -80,6 +80,9 @@ jobs:
           grep -q 'xmlns:tools' $M || sed -i 's#<manifest #<manifest xmlns:tools="http://schemas.android.com/tools" #' $M
           sed -i 's#</application>#    <service android:name=".BloqueoServicio" android:exported="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Tapar apps que distraen durante una sesion de estudio" /></service>\n        <activity android:name=".BloqueoActivity" android:exported="false" android:excludeFromRecents="true" android:launchMode="singleTask" android:taskAffinity="io.github.pmorenod16.tasca.bloqueo" android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar" />\n    </application>#' $M
           grep -q BloqueoServicio $M
+          # widget «Hoy» de la pantalla de inicio
+          sed -i 's#</application>#    <receiver android:name=".TascaWidget" android:exported="true" android:label="Tasca · Hoy"><intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter><meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_hoy_info" /></receiver>\n        <service android:name=".WidgetServicio" android:exported="false" android:permission="android.permission.BIND_REMOTEVIEWS" />\n    </application>#' $M
+          grep -q TascaWidget $M
           # la app abre la web con ?apk=N para saber qué versión del APK está instalada
           sed -i 's#"url": "https://pmorenod16.github.io/organizador/tareas/"#"url": "https://pmorenod16.github.io/organizador/tareas/?apk=${{ github.run_number }}"#' capacitor.config.json
           grep -q '?apk=' capacitor.config.json

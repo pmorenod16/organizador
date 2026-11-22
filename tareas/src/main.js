@@ -19,6 +19,7 @@ import { deVista } from "./logica.js";
 import * as Act from "./actualizar.js";
 import * as Cal from "./calendarios.js";
 import * as Bl from "./bloqueo.js";
+import * as W from "./widget.js";
 import { fechaBonita, minutosTexto } from "./fechas.js";
 import { minutosEntre } from "./sesiones.js";
 import { conEnlaces } from "./ui.js";
@@ -110,7 +111,7 @@ window.addEventListener("hashchange", () => { leerRuta(); pintar(); window.scrol
 D.alCambiar((s, err) => {
   if (err) { if (!s.listo) fallo("No se pueden leer los datos: " + (err.code || err.message)); else toast("Sin permiso o sin conexión con la base de datos"); return; }
   if (!s.listo) return;
-  if (!$("#carga").hidden) { mostrar("app"); primeraCarga(); }
+  if (!$("#carga").hidden) { mostrar("app"); primeraCarga(); setTimeout(() => W.alVolver({ anadir: () => anadir({ fecha: hoyISO() }) }), 300); }
   tema(s.ajustes.tema); color(s.ajustes.color); try { localStorage.setItem("tasca.tema", s.ajustes.tema || "auto"); localStorage.setItem("tasca.color", s.ajustes.color || "violeta"); } catch {}
   pintar();
   reprogramar();
@@ -175,6 +176,7 @@ function pintar() {
   if (UI.ruta !== "ajustes") delete v.dataset.saltado;
   pintarMenu();
   pintarMiniFoco();
+  W.actualizar();
 }
 
 let sinEntrada = false, tEntrada = 0;
@@ -437,7 +439,7 @@ document.addEventListener("visibilitychange", () => {
     notificarWeb(`${e.modo === "foco" ? P.metodo().nombre : P.NOMBRES[e.modo]} en marcha${e.plan ? ` · bloque ${Math.min(e.hechos + (e.modo === "foco" ? 1 : 0), e.plan)} de ${e.plan}` : ""}`, `Termina a las ${fin} (quedan ${Math.ceil((e.fin - Date.now()) / 60000)} min).`, "reloj");
   }
 });
-document.addEventListener("visibilitychange", () => { if (!document.hidden) { P.comprobar(); Bl.sincronizar(P.estado(), P.subiendo(), true); if (S.listo) { pintar(); Cal.recargar(); } } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { P.comprobar(); Bl.sincronizar(P.estado(), P.subiendo(), true); if (S.listo) { pintar(); Cal.recargar(); W.alVolver({ anadir: () => anadir({ fecha: hoyISO() }) }); } } });
 document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && UI.pantallaCompleta) { UI.pantallaCompleta = false; pintar(); } });
 $("#miniFoco").addEventListener("click", e => { const b = e.target.closest("[data-mini-p]"); if (b) { e.preventDefault(); P[b.dataset.miniP](); } });
 
