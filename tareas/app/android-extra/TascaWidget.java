@@ -42,6 +42,7 @@ public class TascaWidget extends AppWidgetProvider {
         int[] ids = m.getAppWidgetIds(new ComponentName(c, TascaWidget.class));
         for (int i : ids) pintar(c, m, i);
         m.notifyAppWidgetViewDataChanged(ids, id(c, "id", "w_lista"));
+        TascaWidgetMini.refrescar(c);
     }
 
     private static PendingIntent abrirApp(Context c, String accion, int codigo) {
@@ -104,6 +105,7 @@ public class TascaWidget extends AppWidgetProvider {
         for (int i : ids) pintar(c, m, i);
         m.notifyAppWidgetViewDataChanged(ids, id(c, "id", "w_lista"));
         programarMedianoche(c);
+        TascaWidgetMini.refrescar(c);
     }
 
     @Override

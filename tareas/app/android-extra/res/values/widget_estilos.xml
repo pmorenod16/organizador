@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="WidgetMiniFila">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">5dp</item>
+        <item name="android:textSize">12.5sp</item>
+        <item name="android:textColor">@color/widget_texto</item>
+        <item name="android:maxLines">1</item>
+        <item name="android:ellipsize">end</item>
+    </style>
+    <string name="widget_mini_descripcion">Lo que te queda hoy, en pequeño</string>
+</resources>

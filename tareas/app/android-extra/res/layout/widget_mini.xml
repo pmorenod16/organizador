@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:id="@+id/m_raiz"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@drawable/widget_fondo" android:padding="12dp">
+    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+        <TextView android:id="@+id/m_num" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="24sp" android:textStyle="bold" android:textColor="@color/widget_resalte" />
+        <TextView android:id="@+id/m_txt" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content"
+            android:layout_marginLeft="6dp" android:textSize="12sp" android:textColor="@color/widget_suave" android:maxLines="1" android:ellipsize="end" />
+        <TextView android:id="@+id/m_mas" android:layout_width="28dp" android:layout_height="28dp" android:gravity="center"
+            android:text="+" android:textSize="18sp" android:textColor="#FFFFFF" android:background="@drawable/widget_boton" />
+    </LinearLayout>
+    <TextView android:id="@+id/m_1" style="@style/WidgetMiniFila" />
+    <TextView android:id="@+id/m_2" style="@style/WidgetMiniFila" />
+    <TextView android:id="@+id/m_3" style="@style/WidgetMiniFila" />
+    <TextView android:id="@+id/m_vacio" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp"
+        android:text="Todo hecho 🎉" android:textSize="13sp" android:textColor="@color/widget_suave" android:visibility="gone" />
+</LinearLayout>

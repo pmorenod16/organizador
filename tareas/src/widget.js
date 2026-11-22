@@ -16,13 +16,15 @@ function dia(f, h) {
   const items = [
     ...Cal.delDia(f).filter(e => !enl.porEvento.has(e.id)).map(e => {
       const k = e.todoElDia ? "00:00 0" : e.ini.slice(0, 10) < f ? "00:00 1" : e.ini.slice(11);
-      return { k, tipo: "e", titulo: e.titulo, color: e.color, sub: [Cal.horaDe(e, f), e.lugar].filter(Boolean).join(" · ") };
+      return { k, tipo: "e", titulo: e.titulo, color: e.color, sub: [Cal.horaDe(e, f), e.lugar].filter(Boolean).join(" · "),
+        ini: e.todoElDia ? "" : e.ini.slice(0, 10) < f ? "00:00" : e.ini.slice(11), fin: e.todoElDia ? "" : e.fin.slice(0, 10) > f ? "24:00" : e.fin.slice(11) };
     }),
     ...tareas.map(t => {
       const s = enl.porTarea.get(t.id), p = proyectoDe(t.proyectoId);
       const hora = s ? `${s.ini.slice(11)}–${s.fin.slice(11)}` : t.hora || "";
       const sub = [t.fecha < f ? "Vencida" : "", hora, p?.nombre].filter(Boolean).join(" · ");
-      return { k: s?.ini.slice(11) || t.hora || "99:99", tipo: "t", id: t.id, titulo: t.titulo, color: p?.color || "#9A9AA2", sub, prio: t.prioridad || 4, vencida: t.fecha < f };
+      return { k: s?.ini.slice(11) || t.hora || "99:99", tipo: "t", id: t.id, titulo: t.titulo, color: p?.color || "#9A9AA2", sub, prio: t.prioridad || 4, vencida: t.fecha < f,
+        ini: s ? s.ini.slice(11) : t.hora || "", fin: s ? s.fin.slice(11) : "" };
     }),
   ].sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : a.tipo === "e" ? -1 : 1));
   return items.slice(0, MAX).map(({ k, ...x }) => x);
