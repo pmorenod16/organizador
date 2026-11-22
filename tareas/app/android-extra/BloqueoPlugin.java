@@ -40,6 +40,17 @@ public class BloqueoPlugin extends Plugin {
         return modo == AppOpsManager.MODE_ALLOWED;
     }
 
+    /** Xiaomi: «Mostrar ventanas emergentes mientras se ejecuta en segundo plano» (op 10021). null si no es Xiaomi o no se sabe */
+    private Boolean fondoXiaomi() {
+        if (!"xiaomi".equalsIgnoreCase(Build.MANUFACTURER)) return null;
+        try {
+            AppOpsManager ops = (AppOpsManager) getContext().getSystemService(Context.APP_OPS_SERVICE);
+            java.lang.reflect.Method m = AppOpsManager.class.getMethod("checkOpNoThrow", int.class, int.class, String.class);
+            int modo = (Integer) m.invoke(ops, 10021, Process.myUid(), getContext().getPackageName());
+            return modo == AppOpsManager.MODE_ALLOWED;
+        } catch (Exception e) { return null; }
+    }
+
     /** Permiso «Mostrar sobre otras apps»: para tapar la app bloqueada */
     private boolean superponer() { return Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(getContext()); }
 
@@ -48,10 +59,11 @@ public class BloqueoPlugin extends Plugin {
         JSObject r = new JSObject();
         r.put("uso", accesoUso());
         r.put("servicio", BloqueoServicio.enMarcha);
+        r.put("fondoXiaomi", fondoXiaomi());
         r.put("ultimaApp", BloqueoServicio.ultimaVista);
         r.put("hasta", getContext().getSharedPreferences(BloqueoServicio.PREFS, Context.MODE_PRIVATE).getLong("hasta", 0L));
         r.put("superponer", superponer());
-        r.put("activo", accesoUso() && superponer());
+        r.put("activo", accesoUso() && superponer() && !Boolean.FALSE.equals(fondoXiaomi()));
         r.put("fabricante", Build.MANUFACTURER);
         r.put("android", Build.VERSION.SDK_INT);
         SharedPreferences p = getContext().getSharedPreferences(BloqueoServicio.PREFS, Context.MODE_PRIVATE);

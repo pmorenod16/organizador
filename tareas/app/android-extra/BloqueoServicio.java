@@ -103,17 +103,35 @@ public class BloqueoServicio extends Service {
             if (app != null) { delante = app; ultimaVista = app; }
             Set<String> apps = p.getStringSet("apps", Collections.<String>emptySet());
             boolean tapar = apps != null && apps.contains(delante) && !delante.equals(getPackageName());
-            if (tapar) mostrarCapa(delante, hasta); else quitarCapa();
-            h.postDelayed(this, 700);
+            if (tapar) {
+                mostrarCapa(delante, hasta);
+                // además abre la pantalla de bloqueo como actividad: en algunos móviles (Xiaomi) la capa no
+                // se ve si Tasca está en segundo plano; mientras la app bloqueada siga delante, se insiste
+                if (ahora - ultimoLanzamiento > 1500) { ultimoLanzamiento = ahora; lanzarPantalla(delante); }
+            } else quitarCapa();
+            h.postDelayed(this, 500);
         }
     };
+
+    private long ultimoLanzamiento = 0, consultado = 0;
+
+    private void lanzarPantalla(String app) {
+        try {
+            Intent i = new Intent(this, BloqueoActivity.class);
+            i.putExtra("app", app);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP | Intent.FLAG_ACTIVITY_NO_ANIMATION | Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS);
+            startActivity(i);
+        } catch (Exception ignored) {}
+    }
 
     /** La última app que ha pasado a primer plano (null si no ha cambiado nada en los últimos segundos) */
     private String appDelante() {
         try {
             UsageStatsManager usm = (UsageStatsManager) getSystemService(Context.USAGE_STATS_SERVICE);
             long ahora = System.currentTimeMillis();
-            UsageEvents ev = usm.queryEvents(ahora - 15000, ahora);
+            long desde = consultado == 0 ? ahora - 60000 : Math.min(consultado - 2000, ahora - 10000);
+            consultado = ahora;
+            UsageEvents ev = usm.queryEvents(desde, ahora + 1000);
             UsageEvents.Event e = new UsageEvents.Event();
             String ultima = null;
             while (ev.hasNextEvent()) {

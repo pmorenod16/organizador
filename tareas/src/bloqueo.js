@@ -76,7 +76,7 @@ export async function rellenar(el) {
           ${est.uso ? "" : `<div class="botones-izq"><button class="btn primario peque" data-bloq-uso>Dar acceso al uso</button></div>`}</li>
         <li class="${est.superponer ? "hecho" : ""}">${est.superponer ? "✓ " : ""}<b>Mostrar sobre otras apps</b>: para taparla con la pantalla de estudio.
           ${est.superponer ? "" : `<div class="botones-izq"><button class="btn primario peque" data-bloq-superponer>Permitir</button></div>`}</li>
-        ${/xiaomi|redmi|poco/i.test(est.fabricante || "") ? `<li>En Xiaomi: en <b>Otros permisos</b> activa <b>Mostrar ventanas emergentes mientras se ejecuta en segundo plano</b>, y en la info de Tasca pon <b>Ahorro de batería → Sin restricciones</b>.
+        ${/xiaomi|redmi|poco/i.test(est.fabricante || "") ? `<li class="${est.fondoXiaomi ? "hecho" : ""}">${est.fondoXiaomi ? "✓ " : est.fondoXiaomi === false ? "<b>Falta este:</b> " : ""}En Xiaomi: en <b>Otros permisos</b> activa <b>Mostrar ventanas emergentes mientras se ejecuta en segundo plano</b>, y en la info de Tasca pon <b>Ahorro de batería → Sin restricciones</b>.
           <div class="botones-izq"><button class="btn peque" data-bloq-xiaomi>Otros permisos</button><button class="btn peque" data-bloq-info>Info de Tasca</button></div></li>` : ""}
       </ol>
       <p class="suave peque">Si sale <b>«Ajuste restringido»</b>: abre la info de Tasca → ⋮ arriba a la derecha → <b>Permitir ajustes restringidos</b>. Tasca solo mira qué app está abierta; no lee nada de lo que hay dentro.</p></div>` : c.activo ? `<p class="ok-bloqueo">✓ Permisos activados</p>` : ""}
