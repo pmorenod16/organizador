@@ -29,7 +29,7 @@ export function enfoque(ui) {
     : p || e.etiqueta ? `<span class="punto" style="background:${esc(p?.color || "var(--suave)")}"></span><span><b>${esc(e.etiqueta || "Estudio libre")}</b><small>${esc(p?.nombre || "Sin asignatura")} · sin tarea</small></span>`
     : `<span class="suave">Estudio libre · toca para elegir tarea o asignatura (opcional)</span>`;
   return `<div class="enfoque modo-${e.modo} ${ui.pantallaCompleta ? "completa" : ""}">
-    <header class="vista-cab"><div class="tit"><h1>Enfoque</h1></div><div class="acc-cab"><button class="icono" data-info-metodos aria-label="Qué es cada método">?</button></div></header>
+    <header class="vista-cab"><div class="tit"><h1>Estudio</h1></div><div class="acc-cab"><button class="icono" data-info-metodos aria-label="Qué es cada método">?</button></div></header>
     <div class="metodos" role="tablist" data-nodeslizar>${Object.entries(P.METODOS).map(([k, m]) => `<button data-tipo="${k}" class="${e.tipo === k ? "on" : ""}" ${parado || e.tipo === k ? "" : "disabled"}><b>${m.nombre}</b><small>${m.corto}</small></button>`).join("")}</div>
     <p class="desc-metodo suave">${esc(M.desc)}</p>
     ${e.tipo === "pomodoro" ? `<button class="ajustar-pomo" data-ajustar-pomo ${parado ? "" : "disabled"}>${esc(resumenPomodoro())} <span>${parado ? "Ajustar" : ""}</span></button>` : ""}
@@ -136,7 +136,7 @@ export function estadisticas() {
     </div>
     <h2 class="grupo">Concentración · 14 días</h2>${barras(minPorDia, maxMin, v => minutosTexto(v), "min")}
     <h2 class="grupo">Hechas · 14 días</h2>${barras(hechasPorDia, maxH, v => v + " hechas", "hechas")}
-    <h2 class="grupo">Tiempo por asignatura · 30 días</h2>${filasP ? `<ul class="horiz">${filasP}</ul>` : `<p class="suave">Aún no hay pomodoros. Empieza uno desde Enfoque o con ▶ en cualquier tarea.</p>`}
+    <h2 class="grupo">Tiempo por asignatura · 30 días</h2>${filasP ? `<ul class="horiz">${filasP}</ul>` : `<p class="suave">Aún no hay tiempo de estudio. Empieza desde Estudio o con «Estudiar» en cualquier tarea.</p>`}
     <h2 class="grupo">Avance de los proyectos</h2>${avance ? `<ul class="horiz">${avance}</ul>` : `<p class="suave">Sin proyectos todavía.</p>`}`;
 }
 

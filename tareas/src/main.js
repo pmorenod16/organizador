@@ -193,7 +193,7 @@ function htmlDe(ruta, arg) {
 // ---------- deslizar entre pestañas (móvil) ----------
 // Como en el Armario: al arrastrar de lado se pinta la pestaña vecina pegada al borde y las dos siguen al dedo.
 // Al soltar, si has pasado un cuarto de pantalla o lo has lanzado rápido, entra la vecina; si no, vuelven.
-const ORDEN = ["hoy", "proximos", "enfoque", "explorar"];
+const ORDEN = ["hoy", "proximos", "enfoque", "explorar", "ajustes"];
 const EASE = "cubic-bezier(.22,.8,.25,1)";
 let sw = null, peek = null;
 const vista = () => $("#vista");
@@ -283,8 +283,8 @@ function moverIndicador(pos, animar = false) {
 addEventListener("resize", () => moverIndicador(PESTANAS.findIndex(([r]) => r === pestanaDe(UI.ruta))));
 function contar(vista, extra) { return deVista(vista, S.tareas, hoyISO(), extra).length; }
 // Barra de abajo: lo que más se usa al estudiar (el + sigue flotando encima, a la derecha)
-const PESTANAS = [["hoy", "Hoy", "hoy"], ["proximos", "Próximo", "proximo"], ["enfoque", "Enfoque", "tomate"], ["explorar", "Proyectos", "almohadilla"]];
-const pestanaDe = r => (["proyecto", "estadisticas", "hechas", "ajustes", "bandeja"].includes(r) ? "explorar" : r === "buscar" ? null : r);
+const PESTANAS = [["hoy", "Hoy", "hoy"], ["proximos", "Próximo", "proximo"], ["enfoque", "Estudio", "libro"], ["explorar", "Proyectos", "almohadilla"], ["ajustes", "Ajustes", "ajustes"]];
+const pestanaDe = r => (["proyecto", "estadisticas", "hechas", "bandeja"].includes(r) ? "explorar" : r === "buscar" ? null : r);
 function pintarMenu() {
   const actual = UI.ruta === "proyecto" ? "proyecto/" + UI.arg : UI.ruta;
   const it = (ruta, nombre, ico, n, color = "") => `<a href="#/${ruta}" class="${actual === ruta ? "on" : ""}"><span class="ico-m" style="${color ? "color:" + color : ""}">${icono(ico)}</span><span>${nombre}</span>${n ? `<small>${n}</small>` : ""}</a>`;
@@ -298,7 +298,7 @@ function pintarMenu() {
       ${it("bandeja", "Bandeja de entrada", "bandeja", contar("bandeja"), "var(--p3)")}
       ${it("hoy", "Hoy", "hoy", nHoy ? `<span class="${tarde ? "rojo" : ""}">${nHoy}</span>` : "", "var(--verde)")}
       ${it("proximos", "Próximo", "proximo", "", "var(--morado)")}
-      ${it("enfoque", "Enfoque", "tomate", "", "var(--acento)")}
+      ${it("enfoque", "Estudio", "libro", "", "var(--acento)")}
       ${it("estadisticas", "Estadísticas", "grafica", "", "var(--p3)")}
       ${it("hechas", "Completadas", "hecho", "", "var(--suave)")}
     </nav>
@@ -319,12 +319,12 @@ function pintarMenu() {
   requestAnimationFrame(() => moverIndicador(PESTANAS.findIndex(([r]) => r === pes), true));
 }
 
-/** Con un pomodoro en marcha, la pestaña Enfoque enseña el tiempo que queda */
+/** Con un bloque en marcha, la pestaña Estudio enseña el tiempo que queda */
 function pintarPestanaFoco() {
   const a = $('#abajo a[data-pes="enfoque"]'); if (!a) return;
   const e = P.estado(), activo = e.estado !== "parado";
   a.classList.toggle("en-marcha", activo);
-  a.querySelector("span").textContent = activo ? P.formato(P.tiempo()) : "Enfoque";
+  a.querySelector("span").textContent = activo ? P.formato(P.tiempo()) : "Estudio";
 }
 function pintarMiniFoco() {
   const e = P.estado(), el = $("#miniFoco");
@@ -567,7 +567,7 @@ async function menuProyecto(id) {
     { id: "seccion", texto: "Añadir sección", icono: "seccion" },
     { id: "hechas", texto: UI.verHechas[id] ? "Ocultar completadas" : "Mostrar completadas", icono: "hecho" },
     { id: "importar", texto: "Importar CSV de Todoist aquí", icono: "importar" },
-    { id: "foco", texto: "Pomodoro con la siguiente tarea", icono: "tomate" },
+    { id: "foco", texto: "Estudiar la siguiente tarea", icono: "libro" },
     { id: "archivar", texto: p.archivado ? "Desarchivar" : "Archivar", icono: "carpeta" },
     { id: "borrar", texto: "Eliminar proyecto", icono: "cerrar", peligro: true },
   ], p.nombre);

@@ -28,7 +28,7 @@ public class TemporizadorPlugin extends Plugin {
         Context ctx = getContext();
         NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(CANAL) == null) {
-            NotificationChannel c = new NotificationChannel(CANAL, "Reloj del Enfoque", NotificationManager.IMPORTANCE_LOW);
+            NotificationChannel c = new NotificationChannel(CANAL, "Reloj del estudio", NotificationManager.IMPORTANCE_LOW);
             c.setDescription("El tiempo que queda mientras estudias");
             c.setShowBadge(false);
             c.setSound(null, null);

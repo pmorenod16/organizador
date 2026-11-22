@@ -17,7 +17,7 @@ export function ajustes({ email, version }) {
   const num = (k, n, min, max, suf = "min") => `<label class="fila-ajuste"><span>${n}</span><span><input type="number" data-aj="${k}" value="${esc(a[k])}" min="${min}" max="${max}"> ${suf}</span></label>`;
   const sw = (k, n) => `<label class="fila-ajuste"><span>${n}</span><input type="checkbox" class="sw" data-aj="${k}" ${a[k] ? "checked" : ""}></label>`;
   const perm = esNativo() ? "granted" : permisoWeb();
-  return `<header class="vista-cab"><a class="icono atras" href="#/explorar" aria-label="Atrás">${icono("atras")}</a><div class="tit"><h1>Ajustes</h1><p class="suave">${esc(email || "")}</p></div></header>
+  return `<header class="vista-cab"><div class="tit"><h1>Ajustes</h1><p class="suave">${esc(email || "")}</p></div></header>
   <section class="caja">
     <h2>Importar de Todoist</h2>
     <p class="suave">Elige uno o varios CSV (uno por proyecto). Las sesiones quedan como tareas con fecha y los pasos como subtareas, con sus secciones, notas y prioridades.</p>

@@ -234,7 +234,7 @@ export function abrirTarea(id, opciones = {}) {
       case "menu": {
         const r = await menu([
           { id: "hoy", texto: "Para hoy", icono: "hoy" }, { id: "manana", texto: "Para mañana", icono: "cal" },
-          ...(!t.hecha ? [{ id: "foco", texto: "Empezar un pomodoro", icono: "tomate" }] : []),
+          ...(!t.hecha ? [{ id: "foco", texto: "Estudiar esta tarea", icono: "libro" }] : []),
           ...(t.enlace ? [{ id: "desenlazar", texto: "Quitar el enlace con el calendario", icono: "cerrar" }] : []),
           { id: "subtarea", texto: "Añadir subtarea", icono: "sub" },
           { id: "duplicar", texto: "Duplicar", icono: "lista" },
