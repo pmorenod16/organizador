@@ -1,0 +1,123 @@
+package io.github.pmorenod16.tasca;
+
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
+import android.content.pm.ApplicationInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.drawable.Drawable;
+import android.net.Uri;
+import android.os.Build;
+import android.provider.Settings;
+import android.util.Base64;
+import com.getcapacitor.JSArray;
+import com.getcapacitor.JSObject;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.PluginCall;
+import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.CapacitorPlugin;
+import java.io.ByteArrayOutputStream;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+
+/** Puente con el bloqueo de distracciones: permiso, lista de apps y qué bloquear hasta cuándo. */
+@CapacitorPlugin(name = "Bloqueo")
+public class BloqueoPlugin extends Plugin {
+
+    private boolean servicioActivo() {
+        Context ctx = getContext();
+        String activos = Settings.Secure.getString(ctx.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
+        if (activos == null) return false;
+        ComponentName yo = new ComponentName(ctx, BloqueoServicio.class);
+        for (String s : activos.split(":")) {
+            ComponentName c = ComponentName.unflattenFromString(s);
+            if (c != null && c.equals(yo)) return true;
+        }
+        return false;
+    }
+
+    @PluginMethod
+    public void estado(PluginCall call) {
+        JSObject r = new JSObject();
+        r.put("activo", servicioActivo());
+        r.put("fabricante", Build.MANUFACTURER);
+        r.put("android", Build.VERSION.SDK_INT);
+        SharedPreferences p = getContext().getSharedPreferences(BloqueoServicio.PREFS, Context.MODE_PRIVATE);
+        r.put("hasta", p.getLong("hasta", 0L));
+        call.resolve(r);
+    }
+
+    @PluginMethod
+    public void abrirAccesibilidad(PluginCall call) {
+        Intent i = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        getContext().startActivity(i);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void abrirInfoApp(PluginCall call) {
+        Intent i = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + getContext().getPackageName()));
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        getContext().startActivity(i);
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void apps(PluginCall call) {
+        new Thread(() -> {
+            PackageManager pm = getContext().getPackageManager();
+            Intent lanzador = new Intent(Intent.ACTION_MAIN);
+            lanzador.addCategory(Intent.CATEGORY_LAUNCHER);
+            List<ResolveInfo> lista = pm.queryIntentActivities(lanzador, 0);
+            Set<String> vistos = new HashSet<>();
+            JSArray out = new JSArray();
+            for (ResolveInfo ri : lista) {
+                String pkg = ri.activityInfo.packageName;
+                if (pkg.equals(getContext().getPackageName()) || !vistos.add(pkg)) continue;
+                try {
+                    ApplicationInfo ai = pm.getApplicationInfo(pkg, 0);
+                    JSObject o = new JSObject();
+                    o.put("app", pkg);
+                    o.put("nombre", pm.getApplicationLabel(ai).toString());
+                    boolean juego = (Build.VERSION.SDK_INT >= 26 && ai.category == ApplicationInfo.CATEGORY_GAME) || (ai.flags & ApplicationInfo.FLAG_IS_GAME) != 0;
+                    o.put("juego", juego);
+                    o.put("icono", icono(pm.getApplicationIcon(ai)));
+                    out.put(o);
+                } catch (Exception ignored) {}
+            }
+            JSObject r = new JSObject();
+            r.put("apps", out);
+            call.resolve(r);
+        }).start();
+    }
+
+    private String icono(Drawable d) {
+        try {
+            int t = 72;
+            Bitmap b = Bitmap.createBitmap(t, t, Bitmap.Config.ARGB_8888);
+            Canvas c = new Canvas(b);
+            d.setBounds(0, 0, t, t);
+            d.draw(c);
+            ByteArrayOutputStream s = new ByteArrayOutputStream();
+            b.compress(Bitmap.CompressFormat.PNG, 100, s);
+            return "data:image/png;base64," + Base64.encodeToString(s.toByteArray(), Base64.NO_WRAP);
+        } catch (Exception e) { return ""; }
+    }
+
+    /** apps: paquetes a bloquear; hasta: hora (ms) a la que se levanta el bloqueo (0 = nada bloqueado) */
+    @PluginMethod
+    public void configurar(PluginCall call) {
+        Set<String> apps = new HashSet<>();
+        JSArray lista = call.getArray("apps", new JSArray());
+        for (int i = 0; i < lista.length(); i++) { try { apps.add(lista.getString(i)); } catch (Exception ignored) {} }
+        long hasta = call.getLong("hasta", 0L);
+        getContext().getSharedPreferences(BloqueoServicio.PREFS, Context.MODE_PRIVATE).edit().putStringSet("apps", apps).putLong("hasta", hasta).apply();
+        call.resolve();
+    }
+}

@@ -9,6 +9,7 @@ import { pedirPermiso, permisoWeb } from "./avisos.js";
 import { esNativo } from "./nativo.js";
 import { icono } from "./lista.js";
 import * as Cal from "./calendarios.js";
+import * as Bl from "./bloqueo.js";
 
 export const APK_URL = "https://github.com/pmorenod16/organizador/releases/download/tasca/tasca.apk";
 
@@ -36,6 +37,7 @@ export function ajustes({ email, version }) {
     ${Cal.error() ? `<p class="aviso">${esc(Cal.error())}</p>` : Cal.cargadoEn() && Cal.lista().length ? `<p class="suave peque">Actualizado a las ${new Date(Cal.cargadoEn()).toTimeString().slice(0, 5)}. Se actualiza solo cada 30 min.</p>` : ""}
     ${Cal.lista().length ? `<label class="fila-ajuste"><span>Mostrar los eventos</span><input type="checkbox" class="sw" data-aj="verEventos" ${a.verEventos !== false ? "checked" : ""}></label>` : ""}
   </section>
+  ${Bl.caja()}
   <section class="caja">
     <h2>Recordatorios</h2>
     ${esNativo() ? `<p class="suave">Los avisos llegan aunque la app esté cerrada. En los Xiaomi: mantén pulsado el icono → Información de la app → Ahorro de batería: <b>Sin restricciones</b> e Inicio automático: <b>activado</b>.</p>`

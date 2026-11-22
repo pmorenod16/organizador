@@ -1,0 +1,108 @@
+// Bloqueo de distracciones (solo en la app de Android): mientras estudias, las apps de la lista se tapan con
+// la pantalla «Ahora toca estudiar». Lo hace un servicio de accesibilidad de Tasca que solo mira qué app se abre.
+import * as D from "./datos.js";
+import { S } from "./datos.js";
+import { esNativo, llamar } from "./nativo.js";
+import { esc, hoja, toast } from "./ui.js";
+import { normal } from "./logica.js";
+
+// apps que se proponen la primera vez (si las tienes instaladas), además de todos los juegos
+const SUGERIDAS = [
+  "com.instagram.android", "com.instagram.barcelona", "com.google.android.youtube", "com.zhiliaoapp.musically", "com.ss.android.ugc.trill",
+  "com.amazon.avod.thirdpartyclient", "es.plus.yomvi", "es.movistar.plus", "com.netflix.mediaclient", "com.disney.disneyplus", "com.wbd.stream", "com.hbo.hbonow",
+  "com.atresmedia.atresplayer", "es.rtve.play", "com.dazn", "tv.twitch.android.app", "com.twitter.android", "com.facebook.katana", "com.reddit.frontpage",
+  "com.snapchat.android", "com.pinterest", "com.bereal.ft",
+];
+
+export const disponible = () => esNativo();
+const conf = () => ({ activo: false, apps: [], descansos: false, ...(S.ajustes.bloqueo || {}) });
+const guardar = cambios => D.guardarAjustes({ bloqueo: { ...conf(), ...cambios } });
+
+let lista = null;
+/** Apps instaladas (con icono). La primera vez propone las distracciones típicas y los juegos. */
+export async function apps() {
+  if (!lista) {
+    const r = await llamar("Bloqueo", "apps");
+    lista = (r?.apps || []).sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
+    const c = conf();
+    if (!c.inicializado) guardar({ inicializado: true, apps: lista.filter(a => a.juego || SUGERIDAS.includes(a.app)).map(a => a.app) });
+  }
+  return lista;
+}
+
+let ultima = "";
+/** Le dice al servicio qué bloquear y hasta cuándo, según el reloj de Estudio */
+export function sincronizar(P, subiendo) {
+  if (!esNativo()) return;
+  const c = conf();
+  let hasta = 0;
+  if (c.activo && c.apps.length && P.estado === "corriendo" && (P.modo === "foco" || c.descansos))
+    hasta = subiendo ? Date.now() + 6 * 3600e3 : P.fin; // con cuenta atrás se levanta solo al acabar el bloque
+  const clave = Math.round(hasta / 60000) + "|" + c.apps.join(",");
+  if (clave === ultima) return;
+  ultima = clave;
+  llamar("Bloqueo", "configurar", { apps: c.apps, hasta }).catch(() => {}); // APK antiguo: sin el plugin
+}
+export const bloqueando = P => esNativo() && conf().activo && conf().apps.length && P.estado === "corriendo" && (P.modo === "foco" || conf().descansos);
+export const nombresBloqueadas = () => {
+  const c = conf(); if (!lista) return c.apps.length ? `${c.apps.length} apps` : "";
+  const n = lista.filter(a => c.apps.includes(a.app)).map(a => a.nombre);
+  return n.length <= 3 ? n.join(", ") : `${n.slice(0, 2).join(", ")} y ${n.length - 2} más`;
+};
+
+// ---------------- Ajustes ----------------
+export const caja = () => `<section class="caja" id="bloqueo"><h2>Bloqueo de distracciones</h2><div data-bloqueo>${esNativo() ? `<p class="suave">Cargando…</p>` : `<p class="suave">Mientras estudias, tapa Instagram, YouTube, los juegos y las apps que elijas. Funciona en la app de Android (en el navegador no se puede).</p>`}</div></section>`;
+
+export async function rellenar(el) {
+  if (!el || !esNativo()) return;
+  let est;
+  try { est = await llamar("Bloqueo", "estado"); }
+  catch { el.innerHTML = `<p class="aviso">Para bloquear apps hace falta la app nueva: descarga otra vez el APK e instálalo encima.</p><a class="btn" href="https://github.com/pmorenod16/organizador/releases/download/tasca/tasca.apk">Descargar el APK</a>`; return; }
+  const c = conf();
+  let ls = [];
+  try { ls = await apps(); } catch {}
+  const elegidas = ls.filter(a => conf().apps.includes(a.app));
+  el.innerHTML = `
+    <p class="suave">Mientras estudias, si abres una de estas apps sale la pantalla «Ahora toca estudiar» con el tiempo que queda. Al acabar el bloque se desbloquean solas.</p>
+    <label class="fila-ajuste"><span>Bloquear apps mientras estudio</span><input type="checkbox" class="sw" data-bloq="activo" ${c.activo ? "checked" : ""}></label>
+    ${c.activo && !est.activo ? `<div class="aviso permiso-bloqueo">
+      <b>Falta un permiso de Android</b>
+      <ol>
+        <li>Pulsa <b>Dar el permiso</b> → <b>Aplicaciones descargadas</b> (o «Servicios instalados») → <b>Tasca: bloqueo de distracciones</b> → actívalo.</li>
+        <li>Si sale <b>«Ajuste restringido»</b>: pulsa <b>Abrir info de Tasca</b> → los tres puntos ⋮ de arriba → <b>Permitir ajustes restringidos</b>, y vuelve al paso 1.</li>
+        ${/xiaomi|redmi|poco/i.test(est.fabricante) ? `<li>En Xiaomi, para que no se apague: en la info de Tasca pon <b>Ahorro de batería → Sin restricciones</b> y activa el <b>Inicio automático</b>.</li>` : ""}
+      </ol>
+      <div class="botones-izq"><button class="btn primario" data-bloq-permiso>Dar el permiso</button><button class="btn" data-bloq-info>Abrir info de Tasca</button></div>
+      <p class="suave peque">Tasca solo mira qué app se abre; no lee nada de lo que hay dentro.</p></div>` : c.activo ? `<p class="ok-bloqueo">✓ Permiso activado</p>` : ""}
+    <div class="fila-ajuste"><span>Apps bloqueadas<small class="suave bloq-lista">${elegidas.length ? esc(elegidas.slice(0, 4).map(a => a.nombre).join(", ")) + (elegidas.length > 4 ? ` y ${elegidas.length - 4} más` : "") : "ninguna"}</small></span><button class="btn peque" data-bloq-elegir>Elegir</button></div>
+    <label class="fila-ajuste"><span>Bloquear también en los descansos</span><input type="checkbox" class="sw" data-bloq="descansos" ${c.descansos ? "checked" : ""}></label>`;
+}
+
+export async function cambiar(campo, valor) { await guardar({ [campo]: valor }); ultima = ""; }
+export const abrirPermiso = () => llamar("Bloqueo", "abrirAccesibilidad");
+export const abrirInfo = () => llamar("Bloqueo", "abrirInfoApp");
+
+/** Hoja para elegir qué apps bloquear */
+export async function elegir() {
+  let ls;
+  try { ls = await apps(); } catch { toast("No he podido leer las apps del móvil"); return; }
+  const sel = new Set(conf().apps);
+  const fila = a => `<li><label><img src="${a.icono}" alt="" width="36" height="36"><span>${esc(a.nombre)}${a.juego ? ` <small class="suave">juego</small>` : ""}</span><input type="checkbox" class="sw" data-app="${esc(a.app)}" ${sel.has(a.app) ? "checked" : ""}></label></li>`;
+  const pintarLista = q => {
+    const f = ls.filter(a => !q || normal(a.nombre).includes(normal(q)));
+    const marcadas = f.filter(a => sel.has(a.app)), resto = f.filter(a => !sel.has(a.app));
+    return (marcadas.length ? `<h3>Bloqueadas <span class="suave">${marcadas.length}</span></h3><ul class="apps-bloq">${marcadas.map(fila).join("")}</ul>` : "") +
+      `<h3>Resto de apps</h3><ul class="apps-bloq">${resto.map(fila).join("") || `<li class="suave">Nada con ese nombre.</li>`}</ul>`;
+  };
+  const el = hoja(`<div class="elegir-apps"><h2>Apps que se bloquean</h2>
+    <input type="search" data-q placeholder="Buscar app…">
+    <div class="botones-izq"><button class="btn peque" data-juegos>Marcar todos los juegos</button><button class="btn peque" data-ninguna>Desmarcar todas</button></div>
+    <div data-lista>${pintarLista("")}</div>
+    <div class="botones"><button class="btn primario" data-listo>Listo</button></div></div>`, { alCerrar: () => guardar({ apps: [...sel] }).then(() => { ultima = ""; }) });
+  const q = el.querySelector("[data-q]");
+  q.oninput = () => { el.querySelector("[data-lista]").innerHTML = pintarLista(q.value); };
+  el.addEventListener("change", e => { const a = e.target.dataset.app; if (a) e.target.checked ? sel.add(a) : sel.delete(a); });
+  el.querySelector("[data-juegos]").onclick = () => { ls.filter(a => a.juego).forEach(a => sel.add(a.app)); el.querySelector("[data-lista]").innerHTML = pintarLista(q.value); };
+  el.querySelector("[data-ninguna]").onclick = () => { sel.clear(); el.querySelector("[data-lista]").innerHTML = pintarLista(q.value); };
+  el.querySelector("[data-listo]").onclick = () => el.cerrar();
+}

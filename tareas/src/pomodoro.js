@@ -5,6 +5,7 @@ import { S } from "./datos.js";
 import { campana } from "./sonido.js";
 import { esNativo, programarNativos, pantallaEncendida, llamar } from "./nativo.js";
 import { notificarWeb } from "./avisos.js";
+import { sincronizar as sincronizarBloqueo } from "./bloqueo.js";
 
 const LS = "tasca.pomodoro";
 const base = { modo: "foco", estado: "parado", fin: 0, restante: 0, inicio: 0, tareaId: null, proyectoId: null, etiqueta: "", ciclos: 0, tipo: "pomodoro", acumulado: 0, minutos: 45, descansoFlow: 5, plan: null, hechos: 0 };
@@ -156,6 +157,7 @@ function programarFin() {
 /** Notificación fija con el reloj mientras haya algo en marcha (APK: lo cuenta Android). */
 let ultimoReloj = "";
 function reloj() {
+  sincronizarBloqueo(P, subiendo());
   if (!esNativo()) return;
   const t = P.tareaId && S.tareas.find(x => x.id === P.tareaId);
   const que = t?.titulo || P.etiqueta || "Estudio libre";

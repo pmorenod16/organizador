@@ -740,3 +740,17 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .elegir-color button { width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; box-shadow: inset 0 0 0 1px var(--linea); }
 .elegir-color button.on { border-color: var(--texto); }
 .tarea-foco span.cambiar { flex: none !important; display: inline; }
+/* bloqueo de distracciones */
+.permiso-bloqueo { margin: 10px 0; }
+.permiso-bloqueo ol { padding-left: 20px; margin: 8px 0 12px; }
+.permiso-bloqueo li { margin-bottom: 6px; }
+.ok-bloqueo { color: var(--verde); font-weight: 600; margin: 6px 0; }
+.bloq-lista { display: block; font-size: .82rem; margin-top: 2px; }
+.apps-bloq { list-style: none; padding: 0; margin: 0; }
+.apps-bloq label { display: flex; align-items: center; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--linea); }
+.apps-bloq img { border-radius: 10px; flex: none; }
+.apps-bloq label span { flex: 1; }
+.elegir-apps input[type=search] { width: 100%; margin-bottom: 10px; }
+.elegir-apps h3 { margin: 16px 0 4px; }
+.bloqueo-activo { margin-top: 14px; background: var(--suave2); border-radius: 999px; padding: 7px 14px; font-size: .85rem; color: var(--suave); }
+.tarea-foco span.cambiar { margin-left: auto; }

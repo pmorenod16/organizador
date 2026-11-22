@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="bloqueo_descripcion">Mientras estudias con Tasca, tapa las apps que hayas elegido (Instagram, YouTube, juegos…). Solo mira qué app se abre; no lee nada de su contenido.</string>
+    <string name="bloqueo_nombre">Tasca: bloqueo de distracciones</string>
+</resources>

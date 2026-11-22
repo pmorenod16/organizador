@@ -5,6 +5,7 @@ import * as P from "./pomodoro.js";
 import { RUIDOS } from "./sonido.js";
 import { hoja } from "./ui.js";
 import * as D from "./datos.js";
+import * as Bl from "./bloqueo.js";
 import { proyectoDe, icono, colorPrioridad } from "./lista.js";
 import { hijosPorPadre, compararManual, racha, deVista } from "./logica.js";
 import { hoyISO, sumarDias, fechaDe, DIAS_CORTOS, diaSemana, minutosTexto, lunesDe } from "./fechas.js";
@@ -56,6 +57,7 @@ export function enfoque(ui) {
       const antes = s.ini && new Date(s.ini) > new Date();
       return `<div class="sesion-foco">${!s.fin ? "Sesión de estudio" : antes ? `Sesión de <b>${s.ini.slice(11)}</b> a <b>${s.fin.slice(11)}</b>` : `Sesión hasta las <b>${s.fin.slice(11)}</b>${queda > 0 ? ` · quedan ${minutosTexto(queda)}` : " · ya ha acabado"}`}${s.pomos && e.tipo === "pomodoro" ? ` · ${hechos} de ${s.pomos} 🍅` : ""}</div>`;
     })() : ""}
+    ${Bl.bloqueando(e) ? `<div class="bloqueo-activo">🔒 ${esc(Bl.nombresBloqueadas())} ${Bl.nombresBloqueadas().includes(",") || Bl.nombresBloqueadas().includes(" y ") ? "bloqueadas" : "bloqueada"} mientras estudias</div>` : ""}
     <button class="tarea-foco" data-elegir-tarea>${que}<span class="cambiar">${t || p || e.etiqueta ? "Cambiar" : "Elegir"}</span></button>
     ${sigPaso ? `<div class="sig-paso"><div class="etiqueta">Siguiente paso</div>
       <ul class="pasos foco">${pasos.map(s => `<li class="${s.hecha ? "hecha" : ""} ${s === sigPaso ? "actual" : ""}"><button class="check" data-sub-check="${esc(s.id)}" style="--c:${colorPrioridad(s.prioridad)}"><svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9"/></svg></button><span>${esc(s.titulo)}</span></li>`).join("")}</ul></div>` : t && pasos.length ? `<p class="suave centrado">✅ Todos los pasos hechos. ¿Marcas la tarea? <button class="enlace" data-acabar-tarea="${esc(t.id)}">Marcar hecha</button></p>` : ""}

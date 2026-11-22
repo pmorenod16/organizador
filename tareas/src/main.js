@@ -18,6 +18,7 @@ import { hoyISO, sumarDias, lunesDe } from "./fechas.js";
 import { deVista } from "./logica.js";
 import * as Act from "./actualizar.js";
 import * as Cal from "./calendarios.js";
+import * as Bl from "./bloqueo.js";
 import { fechaBonita, minutosTexto } from "./fechas.js";
 import { minutosEntre } from "./sesiones.js";
 import { conEnlaces } from "./ui.js";
@@ -113,6 +114,7 @@ D.alCambiar((s, err) => {
   tema(s.ajustes.tema); color(s.ajustes.color); try { localStorage.setItem("tasca.tema", s.ajustes.tema || "auto"); localStorage.setItem("tasca.color", s.ajustes.color || "violeta"); } catch {}
   pintar();
   reprogramar();
+  Bl.sincronizar(P.estado(), P.subiendo());
 });
 
 // ---------- calendarios ----------
@@ -168,6 +170,7 @@ function pintar() {
   $("#btnAnadir").hidden = ["enfoque", "estadisticas", "ajustes", "hechas"].includes(UI.ruta);
   if (UI.ruta === "buscar") { const i = $("[data-buscar]", v); i.focus(); i.setSelectionRange(i.value.length, i.value.length); }
   if (UI.ruta === "enfoque") { tic(v); const m = $(".metodos .on", v); if (m) m.parentElement.scrollLeft = m.offsetLeft - (m.parentElement.clientWidth - m.offsetWidth) / 2; }
+  if (UI.ruta === "ajustes") Bl.rellenar($("[data-bloqueo]", v));
   if (UI.ruta === "ajustes" && UI.arg && !v.dataset.saltado) { v.dataset.saltado = "1"; setTimeout(() => document.getElementById(UI.arg)?.scrollIntoView({ block: "start" }), 50); }
   if (UI.ruta !== "ajustes") delete v.dataset.saltado;
   pintarMenu();
@@ -521,13 +524,17 @@ v.addEventListener("click", async e => {
   // ajustes
   if (d.permiso !== undefined) { await A.activarPermiso(); pintar(); return; }
   if (d.exportar !== undefined) return A.exportar();
+  if (d.bloqPermiso !== undefined) return Bl.abrirPermiso();
+  if (d.bloqInfo !== undefined) return Bl.abrirInfo();
+  if (d.bloqElegir !== undefined) return Bl.elegir();
   if (d.color) { color(d.color); D.guardarAjustes({ color: d.color }); return; }
   if (d.actualizar !== undefined) return Act.comprobar({ manual: true });
   if (d.salir !== undefined) return salir();
   if (d.ir) location.hash = d.ir;
 });
-v.addEventListener("change", e => {
+v.addEventListener("change", async e => {
   const x = e.target;
+  if (x.dataset.bloq) { await Bl.cambiar(x.dataset.bloq, x.checked); Bl.sincronizar(P.estado(), P.subiendo()); if (x.dataset.bloq === "activo" && x.checked) toast("Ahora da el permiso de Android si te lo pide"); return; }
   if (x.dataset.aj) { A.cambiarAjuste(x); if (x.dataset.aj === "verEventos") Cal.recargar(true); return; }
   if (x.dataset.calActivo !== undefined) { A.activarCalendario(Number(x.dataset.calActivo), x.checked); return; }
   if (x.dataset.importar !== undefined && x.files.length) { A.importar([...x.files]); x.value = ""; return; }
