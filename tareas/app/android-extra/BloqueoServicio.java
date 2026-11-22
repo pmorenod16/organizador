@@ -73,25 +73,23 @@ public class BloqueoServicio extends Service {
         return START_STICKY;
     }
 
+    /** El servicio necesita una notificación: usa la del reloj (mismo número), así no sale otra aparte */
     private void primerPlano() {
-        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-        if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(CANAL) == null) {
-            NotificationChannel c = new NotificationChannel(CANAL, "Bloqueo de distracciones", NotificationManager.IMPORTANCE_MIN);
-            c.setShowBadge(false);
-            nm.createNotificationChannel(c);
+        android.app.Notification n = TemporizadorPlugin.ultima;
+        if (n == null) {
+            TemporizadorPlugin.gestor(this);
+            int icono = getResources().getIdentifier("ic_stat_tasca", "drawable", getPackageName());
+            if (icono == 0) icono = getApplicationInfo().icon;
+            n = new NotificationCompat.Builder(this, TemporizadorPlugin.CANAL)
+                .setSmallIcon(icono)
+                .setContentTitle("Estudiando")
+                .setContentText("Las apps que distraen están bloqueadas")
+                .setOnlyAlertOnce(true)
+                .setOngoing(true)
+                .build();
         }
-        int icono = getResources().getIdentifier("ic_stat_tasca", "drawable", getPackageName());
-        if (icono == 0) icono = getApplicationInfo().icon;
-        Notification n = new NotificationCompat.Builder(this, CANAL)
-            .setSmallIcon(icono)
-            .setContentTitle("Bloqueo de distracciones activo")
-            .setContentText("Las apps que distraen están tapadas hasta que acabe el bloque.")
-            .setPriority(NotificationCompat.PRIORITY_MIN)
-            .setSilent(true)
-            .setOngoing(true)
-            .build();
-        if (Build.VERSION.SDK_INT >= 34) startForeground(NOTIF, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
-        else startForeground(NOTIF, n);
+        if (Build.VERSION.SDK_INT >= 34) startForeground(TemporizadorPlugin.ID, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE);
+        else startForeground(TemporizadorPlugin.ID, n);
     }
 
     private final Runnable tic = new Runnable() {
@@ -286,6 +284,9 @@ public class BloqueoServicio extends Service {
         enMarcha = false;
         h.removeCallbacks(tic);
         borrarCapa();
+        // la notificación es la del reloj: se queda si el reloj sigue (p. ej. en pausa) y se quita si no
+        if (Build.VERSION.SDK_INT >= 24) stopForeground(STOP_FOREGROUND_DETACH); else stopForeground(false);
+        if (!TemporizadorPlugin.visible) ((NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE)).cancel(TemporizadorPlugin.ID);
         super.onDestroy();
     }
 }

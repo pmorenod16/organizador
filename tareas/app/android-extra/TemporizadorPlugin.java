@@ -21,22 +21,29 @@ import com.getcapacitor.annotation.CapacitorPlugin;
  */
 @CapacitorPlugin(name = "Temporizador")
 public class TemporizadorPlugin extends Plugin {
-    private static final String CANAL = "temporizador";
-    private static final int ID = 4000;
+    // canal nuevo con importancia normal (sin sonido): los de importancia baja no salen en la pantalla de bloqueo
+    static final String CANAL = "reloj_estudio";
+    static final int ID = 4000;
+    /** La última notificación del reloj: el bloqueo de apps la usa como su notificación (así solo hay una) */
+    static volatile android.app.Notification ultima = null;
+    static volatile boolean visible = false;
 
-    private NotificationManager gestor() {
-        Context ctx = getContext();
+    static NotificationManager gestor(Context ctx) {
         NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
         if (Build.VERSION.SDK_INT >= 26 && nm.getNotificationChannel(CANAL) == null) {
-            NotificationChannel c = new NotificationChannel(CANAL, "Reloj del estudio", NotificationManager.IMPORTANCE_LOW);
-            c.setDescription("El tiempo que queda mientras estudias");
+            NotificationChannel c = new NotificationChannel(CANAL, "Reloj del estudio", NotificationManager.IMPORTANCE_DEFAULT);
+            c.setDescription("El tiempo que queda mientras estudias (también en la pantalla de bloqueo)");
             c.setShowBadge(false);
             c.setSound(null, null);
             c.enableVibration(false);
+            c.setLockscreenVisibility(android.app.Notification.VISIBILITY_PUBLIC);
             nm.createNotificationChannel(c);
+            try { nm.deleteNotificationChannel("temporizador"); nm.deleteNotificationChannel("bloqueo"); } catch (Exception ignored) {}
         }
         return nm;
     }
+
+    private NotificationManager gestor() { return gestor(getContext()); }
 
     @PluginMethod
     public void mostrar(PluginCall call) {
@@ -78,15 +85,16 @@ public class TemporizadorPlugin extends Plugin {
             .setContentIntent(pi)
             .setOngoing(!pausa)
             .setOnlyAlertOnce(true)
-            .setSilent(true)
             .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setPriority(NotificationCompat.PRIORITY_LOW);
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT);
         if (!pausa && cuentaAtras) {
             long queda = base - ahora;
             if (queda > 0) b.setTimeoutAfter(queda + 1000); // al llegar a cero se quita (llega el aviso de fin)
         }
-        gestor().notify(ID, b.build());
+        android.app.Notification n = b.build();
+        ultima = n; visible = true;
+        gestor().notify(ID, n);
         call.resolve();
     }
 
@@ -107,6 +115,7 @@ public class TemporizadorPlugin extends Plugin {
 
     @PluginMethod
     public void ocultar(PluginCall call) {
+        visible = false; ultima = null;
         gestor().cancel(ID);
         call.resolve();
     }
