@@ -721,3 +721,21 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .horario .evento-fila .tit-ev small { display: block; color: var(--suave); font-size: .78rem; }
 @media (prefers-color-scheme: dark) { :root:not([data-tema="claro"]) { --resalte-texto: #D3B7A3; } }
 :root[data-tema="oscuro"] { --resalte-texto: #D3B7A3; }
+/* color de resalte a elegir en Ajustes (22/11/2026): violeta claro por defecto, azul claro, rojo suave o arena */
+:root, :root[data-color="violeta"] { --resalte: #AFA3D6; --resalte-texto: #6F61A8; }
+:root[data-color="azul"] { --resalte: #9DBEDB; --resalte-texto: #4F7CA3; }
+:root[data-color="rojo"] { --resalte: #DDA3A0; --resalte-texto: #A85A55; }
+:root[data-color="arena"] { --resalte: #C6A690; --resalte-texto: #8C6E5A; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-tema="claro"]), :root:not([data-tema="claro"])[data-color="violeta"] { --resalte: #9C8FD0; --resalte-texto: #C3B9EC; }
+  :root:not([data-tema="claro"])[data-color="azul"] { --resalte: #86AACB; --resalte-texto: #B4D0EA; }
+  :root:not([data-tema="claro"])[data-color="rojo"] { --resalte: #C98A86; --resalte-texto: #E6B4B0; }
+  :root:not([data-tema="claro"])[data-color="arena"] { --resalte: #B99A85; --resalte-texto: #D3B7A3; }
+}
+:root[data-tema="oscuro"], :root[data-tema="oscuro"][data-color="violeta"] { --resalte: #9C8FD0; --resalte-texto: #C3B9EC; }
+:root[data-tema="oscuro"][data-color="azul"] { --resalte: #86AACB; --resalte-texto: #B4D0EA; }
+:root[data-tema="oscuro"][data-color="rojo"] { --resalte: #C98A86; --resalte-texto: #E6B4B0; }
+:root[data-tema="oscuro"][data-color="arena"] { --resalte: #B99A85; --resalte-texto: #D3B7A3; }
+.elegir-color { display: flex; gap: 10px; }
+.elegir-color button { width: 34px; height: 34px; border-radius: 50%; border: 3px solid transparent; box-shadow: inset 0 0 0 1px var(--linea); }
+.elegir-color button.on { border-color: var(--texto); }

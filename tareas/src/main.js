@@ -29,7 +29,8 @@ window.addEventListener("unhandledrejection", e => { console.error(e.reason); if
 
 // ---------- tema ----------
 const tema = t => { document.documentElement.dataset.tema = t === "claro" || t === "oscuro" ? t : ""; };
-try { tema(localStorage.getItem("tasca.tema") || "auto"); } catch {}
+const color = c => { document.documentElement.dataset.color = c || "violeta"; };
+try { tema(localStorage.getItem("tasca.tema") || "auto"); color(localStorage.getItem("tasca.color")); } catch {}
 
 // ---------- service worker y actualizaciones ----------
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
@@ -109,7 +110,7 @@ D.alCambiar((s, err) => {
   if (err) { if (!s.listo) fallo("No se pueden leer los datos: " + (err.code || err.message)); else toast("Sin permiso o sin conexión con la base de datos"); return; }
   if (!s.listo) return;
   if (!$("#carga").hidden) { mostrar("app"); primeraCarga(); }
-  tema(s.ajustes.tema); try { localStorage.setItem("tasca.tema", s.ajustes.tema || "auto"); } catch {}
+  tema(s.ajustes.tema); color(s.ajustes.color); try { localStorage.setItem("tasca.tema", s.ajustes.tema || "auto"); localStorage.setItem("tasca.color", s.ajustes.color || "violeta"); } catch {}
   pintar();
   reprogramar();
 });
@@ -520,6 +521,7 @@ v.addEventListener("click", async e => {
   // ajustes
   if (d.permiso !== undefined) { await A.activarPermiso(); pintar(); return; }
   if (d.exportar !== undefined) return A.exportar();
+  if (d.color) { color(d.color); D.guardarAjustes({ color: d.color }); return; }
   if (d.actualizar !== undefined) return Act.comprobar({ manual: true });
   if (d.salir !== undefined) return salir();
   if (d.ir) location.hash = d.ir;

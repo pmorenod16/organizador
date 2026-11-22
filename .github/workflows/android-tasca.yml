@@ -68,6 +68,7 @@ jobs:
           # plugin propio: notificación con el reloj del Enfoque (cronómetro de Android)
           DEST=android/app/src/main/java/io/github/pmorenod16/tasca
           cp android-extra/TemporizadorPlugin.java android-extra/MainActivity.java "$DEST/"
+          mkdir -p android/app/src/main/res/layout && cp android-extra/res/layout/*.xml android/app/src/main/res/layout/
           grep -q "androidx.core" android/app/build.gradle || echo 'dependencies { implementation "androidx.core:core:1.12.0" }' >> android/app/build.gradle
           # avisos a su hora exacta y permiso de notificaciones
           M=android/app/src/main/AndroidManifest.xml

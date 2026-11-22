@@ -52,6 +52,7 @@ export function ajustes({ email, version }) {
   </section>
   <section class="caja">
     <h2>Aspecto</h2>
+    <div class="fila-ajuste"><span>Color</span><div class="elegir-color">${[["violeta", "#AFA3D6", "Violeta claro"], ["azul", "#9DBEDB", "Azul claro"], ["rojo", "#DDA3A0", "Rojo suave"], ["arena", "#C6A690", "Arena"]].map(([k, c, n]) => `<button type="button" data-color="${k}" style="background:${c}" class="${(a.color || "violeta") === k ? "on" : ""}" aria-label="${n}" title="${n}"></button>`).join("")}</div></div>
     <label class="fila-ajuste"><span>Tema</span><select data-aj="tema"><option value="auto" ${a.tema === "auto" ? "selected" : ""}>Como el sistema</option><option value="claro" ${a.tema === "claro" ? "selected" : ""}>Claro</option><option value="oscuro" ${a.tema === "oscuro" ? "selected" : ""}>Oscuro</option></select></label>
   </section>
   <section class="caja">

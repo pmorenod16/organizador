@@ -163,7 +163,8 @@ function reloj() {
   const nombre = P.modo === "foco" ? met().nombre : NOMBRES[P.modo];
   let args = null;
   if (P.estado === "corriendo") args = subiendo() ? { titulo: nombre + bloque, texto: que, base: P.inicio - P.acumulado, cuentaAtras: false } : { titulo: nombre + bloque, texto: P.modo === "foco" ? `${que} · hasta las ${hora(P.fin)}` : `Hasta las ${hora(P.fin)}`, base: P.fin, cuentaAtras: true };
-  else if (P.estado === "pausa") args = { titulo: `En pausa · ${nombre}${bloque}`, texto: `${que} · ${subiendo() ? "llevas" : "quedan"} ${formato(tiempo())}`, base: Date.now(), pausa: true };
+  else if (P.estado === "pausa") args = { titulo: `En pausa · ${nombre}${bloque}`, texto: que, base: Date.now(), pausa: true, restante: tiempo(), cuentaAtras: !subiendo() };
+  if (args) args.color = getComputedStyle(document.documentElement).getPropertyValue("--resalte-texto").trim() || "#7A68B8";
   const clave = JSON.stringify(args);
   if (clave === ultimoReloj) return;
   ultimoReloj = clave;
