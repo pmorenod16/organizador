@@ -754,3 +754,5 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .elegir-apps h3 { margin: 16px 0 4px; }
 .bloqueo-activo { margin-top: 14px; background: var(--suave2); border-radius: 999px; padding: 7px 14px; font-size: .85rem; color: var(--suave); }
 .tarea-foco span.cambiar { margin-left: auto; }
+.permiso-bloqueo li.hecho { color: var(--suave, #75777f); }
+.permiso-bloqueo li .botones-izq { margin-top: 6px; }

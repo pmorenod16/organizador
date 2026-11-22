@@ -437,7 +437,7 @@ document.addEventListener("visibilitychange", () => {
     notificarWeb(`${e.modo === "foco" ? P.metodo().nombre : P.NOMBRES[e.modo]} en marcha${e.plan ? ` · bloque ${Math.min(e.hechos + (e.modo === "foco" ? 1 : 0), e.plan)} de ${e.plan}` : ""}`, `Termina a las ${fin} (quedan ${Math.ceil((e.fin - Date.now()) / 60000)} min).`, "reloj");
   }
 });
-document.addEventListener("visibilitychange", () => { if (!document.hidden) { P.comprobar(); if (S.listo) { pintar(); Cal.recargar(); } } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { P.comprobar(); Bl.sincronizar(P.estado(), P.subiendo(), true); if (S.listo) { pintar(); Cal.recargar(); } } });
 document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && UI.pantallaCompleta) { UI.pantallaCompleta = false; pintar(); } });
 $("#miniFoco").addEventListener("click", e => { const b = e.target.closest("[data-mini-p]"); if (b) { e.preventDefault(); P[b.dataset.miniP](); } });
 
@@ -524,7 +524,9 @@ v.addEventListener("click", async e => {
   // ajustes
   if (d.permiso !== undefined) { await A.activarPermiso(); pintar(); return; }
   if (d.exportar !== undefined) return A.exportar();
-  if (d.bloqPermiso !== undefined) return Bl.abrirPermiso();
+  if (d.bloqUso !== undefined) return Bl.abrirUso();
+  if (d.bloqSuperponer !== undefined) return Bl.abrirSuperponer();
+  if (d.bloqXiaomi !== undefined) return Bl.abrirXiaomi();
   if (d.bloqInfo !== undefined) return Bl.abrirInfo();
   if (d.bloqElegir !== undefined) return Bl.elegir();
   if (d.color) { color(d.color); D.guardarAjustes({ color: d.color }); return; }

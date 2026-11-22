@@ -1,6 +1,7 @@
 package io.github.pmorenod16.tasca;
 
-import android.content.ComponentName;
+import android.app.AppOpsManager;
+import android.os.Process;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -29,22 +30,25 @@ import java.util.Set;
 @CapacitorPlugin(name = "Bloqueo")
 public class BloqueoPlugin extends Plugin {
 
-    private boolean servicioActivo() {
+    /** Permiso «Acceso al uso»: para saber qué app está delante */
+    private boolean accesoUso() {
         Context ctx = getContext();
-        String activos = Settings.Secure.getString(ctx.getContentResolver(), Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES);
-        if (activos == null) return false;
-        ComponentName yo = new ComponentName(ctx, BloqueoServicio.class);
-        for (String s : activos.split(":")) {
-            ComponentName c = ComponentName.unflattenFromString(s);
-            if (c != null && c.equals(yo)) return true;
-        }
-        return false;
+        AppOpsManager ops = (AppOpsManager) ctx.getSystemService(Context.APP_OPS_SERVICE);
+        int modo = Build.VERSION.SDK_INT >= 29
+            ? ops.unsafeCheckOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), ctx.getPackageName())
+            : ops.checkOpNoThrow(AppOpsManager.OPSTR_GET_USAGE_STATS, Process.myUid(), ctx.getPackageName());
+        return modo == AppOpsManager.MODE_ALLOWED;
     }
+
+    /** Permiso «Mostrar sobre otras apps»: para tapar la app bloqueada */
+    private boolean superponer() { return Build.VERSION.SDK_INT < 23 || Settings.canDrawOverlays(getContext()); }
 
     @PluginMethod
     public void estado(PluginCall call) {
         JSObject r = new JSObject();
-        r.put("activo", servicioActivo());
+        r.put("uso", accesoUso());
+        r.put("superponer", superponer());
+        r.put("activo", accesoUso() && superponer());
         r.put("fabricante", Build.MANUFACTURER);
         r.put("android", Build.VERSION.SDK_INT);
         SharedPreferences p = getContext().getSharedPreferences(BloqueoServicio.PREFS, Context.MODE_PRIVATE);
@@ -53,10 +57,28 @@ public class BloqueoPlugin extends Plugin {
     }
 
     @PluginMethod
-    public void abrirAccesibilidad(PluginCall call) {
-        Intent i = new Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS);
+    public void abrirUso(PluginCall call) {
+        Intent i = new Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS);
         i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        getContext().startActivity(i);
+        try { getContext().startActivity(i); } catch (Exception e) { abrirInfoApp(call); return; }
+        call.resolve();
+    }
+
+    @PluginMethod
+    public void abrirSuperponer(PluginCall call) {
+        Intent i = new Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:" + getContext().getPackageName()));
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try { getContext().startActivity(i); } catch (Exception e) { abrirInfoApp(call); return; }
+        call.resolve();
+    }
+
+    /** En Xiaomi: la pantalla de «Otros permisos» de Tasca */
+    @PluginMethod
+    public void abrirPermisosXiaomi(PluginCall call) {
+        Intent i = new Intent("miui.intent.action.APP_PERM_EDITOR");
+        i.putExtra("extra_pkgname", getContext().getPackageName());
+        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        try { getContext().startActivity(i); } catch (Exception e) { abrirInfoApp(call); return; }
         call.resolve();
     }
 
@@ -117,7 +139,11 @@ public class BloqueoPlugin extends Plugin {
         JSArray lista = call.getArray("apps", new JSArray());
         for (int i = 0; i < lista.length(); i++) { try { apps.add(lista.getString(i)); } catch (Exception ignored) {} }
         long hasta = call.getLong("hasta", 0L);
-        getContext().getSharedPreferences(BloqueoServicio.PREFS, Context.MODE_PRIVATE).edit().putStringSet("apps", apps).putLong("hasta", hasta).apply();
+        getContext().getSharedPreferences(BloqueoServicio.PREFS, Context.MODE_PRIVATE).edit().putStringSet("apps", apps).putLong("hasta", hasta).commit();
+        try {
+            if (hasta > System.currentTimeMillis() && !apps.isEmpty() && accesoUso()) BloqueoServicio.arrancar(getContext());
+            else BloqueoServicio.parar(getContext());
+        } catch (Exception e) { /* Android no deja arrancarlo desde segundo plano: lo hará al volver a la app */ }
         call.resolve();
     }
 }

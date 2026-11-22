@@ -1,5 +1,6 @@
 // Bloqueo de distracciones (solo en la app de Android): mientras estudias, las apps de la lista se tapan con
-// la pantalla «Ahora toca estudiar». Lo hace un servicio de accesibilidad de Tasca que solo mira qué app se abre.
+// la pantalla «Ahora toca estudiar». Usa «Acceso al uso» (qué app está delante) y «Mostrar sobre otras apps» (taparla);
+// sin servicio de accesibilidad, que Play Protect bloquea al instalar APKs descargados.
 import * as D from "./datos.js";
 import { S } from "./datos.js";
 import { esNativo, llamar } from "./nativo.js";
@@ -32,7 +33,8 @@ export async function apps() {
 
 let ultima = "";
 /** Le dice al servicio qué bloquear y hasta cuándo, según el reloj de Estudio */
-export function sincronizar(P, subiendo) {
+export function sincronizar(P, subiendo, forzar) {
+  if (forzar) ultima = "";
   if (!esNativo()) return;
   const c = conf();
   let hasta = 0;
@@ -66,20 +68,24 @@ export async function rellenar(el) {
     <p class="suave">Mientras estudias, si abres una de estas apps sale la pantalla «Ahora toca estudiar» con el tiempo que queda. Al acabar el bloque se desbloquean solas.</p>
     <label class="fila-ajuste"><span>Bloquear apps mientras estudio</span><input type="checkbox" class="sw" data-bloq="activo" ${c.activo ? "checked" : ""}></label>
     ${c.activo && !est.activo ? `<div class="aviso permiso-bloqueo">
-      <b>Falta un permiso de Android</b>
+      <b>Faltan permisos de Android</b>
       <ol>
-        <li>Pulsa <b>Dar el permiso</b> → <b>Aplicaciones descargadas</b> (o «Servicios instalados») → <b>Tasca: bloqueo de distracciones</b> → actívalo.</li>
-        <li>Si sale <b>«Ajuste restringido»</b>: pulsa <b>Abrir info de Tasca</b> → los tres puntos ⋮ de arriba → <b>Permitir ajustes restringidos</b>, y vuelve al paso 1.</li>
-        ${/xiaomi|redmi|poco/i.test(est.fabricante) ? `<li>En Xiaomi, para que no se apague: en la info de Tasca pon <b>Ahorro de batería → Sin restricciones</b> y activa el <b>Inicio automático</b>.</li>` : ""}
+        <li class="${est.uso ? "hecho" : ""}">${est.uso ? "✓ " : ""}<b>Acceso al uso</b>: para saber qué app tienes delante. Pulsa el botón, busca <b>Tasca</b> y actívalo.
+          ${est.uso ? "" : `<div class="botones-izq"><button class="btn primario peque" data-bloq-uso>Dar acceso al uso</button></div>`}</li>
+        <li class="${est.superponer ? "hecho" : ""}">${est.superponer ? "✓ " : ""}<b>Mostrar sobre otras apps</b>: para taparla con la pantalla de estudio.
+          ${est.superponer ? "" : `<div class="botones-izq"><button class="btn primario peque" data-bloq-superponer>Permitir</button></div>`}</li>
+        ${/xiaomi|redmi|poco/i.test(est.fabricante || "") ? `<li>En Xiaomi: en <b>Otros permisos</b> activa <b>Mostrar ventanas emergentes mientras se ejecuta en segundo plano</b>, y en la info de Tasca pon <b>Ahorro de batería → Sin restricciones</b>.
+          <div class="botones-izq"><button class="btn peque" data-bloq-xiaomi>Otros permisos</button><button class="btn peque" data-bloq-info>Info de Tasca</button></div></li>` : ""}
       </ol>
-      <div class="botones-izq"><button class="btn primario" data-bloq-permiso>Dar el permiso</button><button class="btn" data-bloq-info>Abrir info de Tasca</button></div>
-      <p class="suave peque">Tasca solo mira qué app se abre; no lee nada de lo que hay dentro.</p></div>` : c.activo ? `<p class="ok-bloqueo">✓ Permiso activado</p>` : ""}
+      <p class="suave peque">Si sale <b>«Ajuste restringido»</b>: abre la info de Tasca → ⋮ arriba a la derecha → <b>Permitir ajustes restringidos</b>. Tasca solo mira qué app está abierta; no lee nada de lo que hay dentro.</p></div>` : c.activo ? `<p class="ok-bloqueo">✓ Permisos activados</p>` : ""}
     <div class="fila-ajuste"><span>Apps bloqueadas<small class="suave bloq-lista">${elegidas.length ? esc(elegidas.slice(0, 4).map(a => a.nombre).join(", ")) + (elegidas.length > 4 ? ` y ${elegidas.length - 4} más` : "") : "ninguna"}</small></span><button class="btn peque" data-bloq-elegir>Elegir</button></div>
     <label class="fila-ajuste"><span>Bloquear también en los descansos</span><input type="checkbox" class="sw" data-bloq="descansos" ${c.descansos ? "checked" : ""}></label>`;
 }
 
 export async function cambiar(campo, valor) { await guardar({ [campo]: valor }); ultima = ""; }
-export const abrirPermiso = () => llamar("Bloqueo", "abrirAccesibilidad");
+export const abrirUso = () => llamar("Bloqueo", "abrirUso");
+export const abrirSuperponer = () => llamar("Bloqueo", "abrirSuperponer");
+export const abrirXiaomi = () => llamar("Bloqueo", "abrirPermisosXiaomi");
 export const abrirInfo = () => llamar("Bloqueo", "abrirInfoApp");
 
 /** Hoja para elegir qué apps bloquear */

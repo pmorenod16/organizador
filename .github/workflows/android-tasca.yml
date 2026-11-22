@@ -68,15 +68,17 @@ jobs:
           # plugin propio: notificación con el reloj del Enfoque (cronómetro de Android)
           DEST=android/app/src/main/java/io/github/pmorenod16/tasca
           cp android-extra/*.java "$DEST/"
-          for d in layout xml values; do mkdir -p android/app/src/main/res/$d && cp android-extra/res/$d/*.xml android/app/src/main/res/$d/; done
+          for d in android-extra/res/*/; do n=$(basename $d); mkdir -p android/app/src/main/res/$n && cp $d*.xml android/app/src/main/res/$n/; done
           grep -q "androidx.core" android/app/build.gradle || echo 'dependencies { implementation "androidx.core:core:1.12.0" }' >> android/app/build.gradle
           # avisos a su hora exacta y permiso de notificaciones
           M=android/app/src/main/AndroidManifest.xml
           sed -i 's#<application#<uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" android:maxSdkVersion="32" />\n    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />\n    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />\n    <uses-permission android:name="android.permission.WAKE_LOCK" />\n    <application#' $M
           grep -q USE_EXACT_ALARM $M
-          # bloqueo de distracciones: servicio de accesibilidad, pantalla de bloqueo y lista de apps instaladas
-          sed -i 's#<application#<queries><intent><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent></queries>\n    <application#' $M
-          sed -i 's#</application>#    <service android:name=".BloqueoServicio" android:exported="false" android:label="@string/bloqueo_nombre" android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"><intent-filter><action android:name="android.accessibilityservice.AccessibilityService" /></intent-filter><meta-data android:name="android.accessibilityservice" android:resource="@xml/bloqueo_config" /></service>\n        <activity android:name=".BloqueoActivity" android:exported="false" android:excludeFromRecents="true" android:launchMode="singleTask" android:taskAffinity="io.github.pmorenod16.tasca.bloqueo" android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar" />\n    </application>#' $M
+          # bloqueo de distracciones (sin accesibilidad, para que Play Protect no frene la instalación):
+          # «Acceso al uso» para saber qué app está delante y «Mostrar sobre otras apps» para taparla
+          sed -i 's#<application#<uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />\n    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />\n    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />\n    <queries><intent><action android:name="android.intent.action.MAIN" /><category android:name="android.intent.category.LAUNCHER" /></intent></queries>\n    <application#' $M
+          grep -q 'xmlns:tools' $M || sed -i 's#<manifest #<manifest xmlns:tools="http://schemas.android.com/tools" #' $M
+          sed -i 's#</application>#    <service android:name=".BloqueoServicio" android:exported="false" android:foregroundServiceType="specialUse"><property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="Tapar apps que distraen durante una sesion de estudio" /></service>\n    </application>#' $M
           grep -q BloqueoServicio $M
           # la app abre la web con ?apk=N para saber qué versión del APK está instalada
           sed -i 's#"url": "https://pmorenod16.github.io/organizador/tareas/"#"url": "https://pmorenod16.github.io/organizador/tareas/?apk=${{ github.run_number }}"#' capacitor.config.json
