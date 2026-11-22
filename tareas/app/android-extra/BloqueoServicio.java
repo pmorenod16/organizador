@@ -67,6 +67,7 @@ public class BloqueoServicio extends Service {
     public int onStartCommand(Intent i, int flags, int id) {
         primerPlano();
         enMarcha = true;
+        crearCapa();
         h.removeCallbacks(tic);
         h.post(tic);
         return START_STICKY;
@@ -98,7 +99,7 @@ public class BloqueoServicio extends Service {
         public void run() {
             SharedPreferences p = getSharedPreferences(PREFS, MODE_PRIVATE);
             long ahora = System.currentTimeMillis(), hasta = p.getLong("hasta", 0L);
-            if (ahora >= hasta) { quitarCapa(); stopSelf(); return; }
+            if (ahora >= hasta) { borrarCapa(); stopSelf(); return; }
             String app = appDelante();
             if (app != null) { delante = app; ultimaVista = app; }
             Set<String> apps = p.getStringSet("apps", Collections.<String>emptySet());
@@ -171,20 +172,23 @@ public class BloqueoServicio extends Service {
         return b;
     }
 
+    // La capa se crea UNA vez, al arrancar el bloqueo (Tasca está delante, así que Android y Xiaomi la dejan
+    // poner) y se queda como un punto invisible de 1×1. Cuando abres una app bloqueada solo se agranda a
+    // pantalla completa: no es una ventana nueva, así que no la frena el permiso de ventanas en segundo plano.
     private String capaDe = "";
+    private boolean grande = false;
+    private TextView subCapa, finCapa;
+    private Chronometer cronoCapa;
+    private WindowManager.LayoutParams lpCapa;
 
-    private void mostrarCapa(String app, long hasta) {
-        if (capa != null && app.equals(capaDe)) return;
-        quitarCapa();
+    private void crearCapa() {
+        if (capa != null) return;
         if (Build.VERSION.SDK_INT >= 23 && !Settings.canDrawOverlays(this)) return;
         wm = (WindowManager) getSystemService(Context.WINDOW_SERVICE);
-        String nombre = app;
-        try { nombre = getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(app, 0)).toString(); } catch (PackageManager.NameNotFoundException ignored) {}
-
         LinearLayout raiz = new LinearLayout(this) {
             @Override
             public boolean dispatchKeyEvent(KeyEvent e) {
-                if (e.getKeyCode() == KeyEvent.KEYCODE_BACK && e.getAction() == KeyEvent.ACTION_UP) { irAlInicio(); return true; }
+                if (grande && e.getKeyCode() == KeyEvent.KEYCODE_BACK) { if (e.getAction() == KeyEvent.ACTION_UP) irAlInicio(); return true; }
                 return super.dispatchKeyEvent(e);
             }
         };
@@ -193,22 +197,21 @@ public class BloqueoServicio extends Service {
         raiz.setBackgroundColor(Color.parseColor("#F3F3F1"));
         raiz.setPadding(dp(32), dp(48), dp(32), dp(48));
         raiz.setFocusableInTouchMode(true);
+        raiz.setClickable(true);
 
         TextView icono = texto("📚", 56, "#1D1E22", false);
         TextView titulo = texto("Ahora toca estudiar", 26, "#1D1E22", true);
         titulo.setPadding(0, dp(12), 0, dp(6));
-        TextView sub = texto(nombre + " está bloqueada hasta que termines este bloque.", 16, "#75777F", false);
-        Chronometer crono = new Chronometer(this);
-        crono.setTextSize(44);
-        crono.setTextColor(Color.parseColor("#6F61A8"));
-        crono.setGravity(Gravity.CENTER);
-        crono.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
-        crono.setBase(SystemClock.elapsedRealtime() + (hasta - System.currentTimeMillis()));
-        if (Build.VERSION.SDK_INT >= 24) crono.setCountDown(true);
-        crono.start();
-        crono.setPadding(0, dp(20), 0, dp(2));
-        TextView fin = texto("Hasta las " + new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(hasta)), 14, "#75777F", false);
-        fin.setPadding(0, 0, 0, dp(28));
+        subCapa = texto("", 16, "#75777F", false);
+        cronoCapa = new Chronometer(this);
+        cronoCapa.setTextSize(44);
+        cronoCapa.setTextColor(Color.parseColor("#6F61A8"));
+        cronoCapa.setGravity(Gravity.CENTER);
+        cronoCapa.setTypeface(Typeface.create("sans-serif-light", Typeface.NORMAL));
+        if (Build.VERSION.SDK_INT >= 24) cronoCapa.setCountDown(true);
+        cronoCapa.setPadding(0, dp(20), 0, dp(2));
+        finCapa = texto("", 14, "#75777F", false);
+        finCapa.setPadding(0, 0, 0, dp(28));
         Button volver = boton("Volver a Tasca", true);
         volver.setOnClickListener(v -> {
             Intent abrir = getPackageManager().getLaunchIntentForPackage(getPackageName());
@@ -218,22 +221,55 @@ public class BloqueoServicio extends Service {
         });
         Button inicio = boton("Ir a la pantalla de inicio", false);
         inicio.setOnClickListener(v -> irAlInicio());
-        raiz.addView(icono); raiz.addView(titulo); raiz.addView(sub); raiz.addView(crono); raiz.addView(fin);
+        raiz.addView(icono); raiz.addView(titulo); raiz.addView(subCapa); raiz.addView(cronoCapa); raiz.addView(finCapa);
         raiz.addView(volver); raiz.addView(inicio);
 
         int tipo = Build.VERSION.SDK_INT >= 26 ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY : WindowManager.LayoutParams.TYPE_PHONE;
-        WindowManager.LayoutParams lp = new WindowManager.LayoutParams(
-            WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.MATCH_PARENT, tipo,
-            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
-            PixelFormat.OPAQUE);
-        lp.gravity = Gravity.CENTER;
-        try { wm.addView(raiz, lp); capa = raiz; capaDe = app; raiz.requestFocus(); } catch (Exception ex) { capa = null; }
+        lpCapa = new WindowManager.LayoutParams(1, 1, tipo, flagsPequena(), PixelFormat.TRANSLUCENT);
+        lpCapa.gravity = Gravity.TOP | Gravity.START;
+        lpCapa.alpha = 0f;
+        raiz.setVisibility(View.INVISIBLE);
+        try { wm.addView(raiz, lpCapa); capa = raiz; } catch (Exception ex) { capa = null; }
     }
 
+    private int flagsPequena() {
+        return WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN;
+    }
+
+    private void mostrarCapa(String app, long hasta) {
+        crearCapa();
+        if (capa == null) return;
+        if (grande && app.equals(capaDe)) return;
+        String nombre = app;
+        try { nombre = getPackageManager().getApplicationLabel(getPackageManager().getApplicationInfo(app, 0)).toString(); } catch (PackageManager.NameNotFoundException ignored) {}
+        subCapa.setText(nombre + " está bloqueada hasta que termines este bloque.");
+        finCapa.setText("Hasta las " + new SimpleDateFormat("HH:mm", Locale.getDefault()).format(new Date(hasta)));
+        cronoCapa.setBase(SystemClock.elapsedRealtime() + (hasta - System.currentTimeMillis()));
+        cronoCapa.start();
+        lpCapa.width = WindowManager.LayoutParams.MATCH_PARENT;
+        lpCapa.height = WindowManager.LayoutParams.MATCH_PARENT;
+        lpCapa.flags = WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS;
+        lpCapa.alpha = 1f;
+        capa.setVisibility(View.VISIBLE);
+        try { wm.updateViewLayout(capa, lpCapa); grande = true; capaDe = app; capa.requestFocus(); } catch (Exception ex) { /* se reintenta en el siguiente vistazo */ }
+    }
+
+    /** La deja otra vez en un punto invisible (sigue puesta para poder agrandarla luego) */
     private void quitarCapa() {
-        if (capa != null && wm != null) { try { wm.removeView(capa); } catch (Exception ignored) {} }
-        capa = null;
+        if (capa == null || !grande) return;
+        cronoCapa.stop();
+        lpCapa.width = 1; lpCapa.height = 1;
+        lpCapa.flags = flagsPequena();
+        lpCapa.alpha = 0f;
+        capa.setVisibility(View.INVISIBLE);
+        try { wm.updateViewLayout(capa, lpCapa); } catch (Exception ignored) {}
+        grande = false;
         capaDe = "";
+    }
+
+    private void borrarCapa() {
+        if (capa != null && wm != null) { try { wm.removeView(capa); } catch (Exception ignored) {} }
+        capa = null; grande = false; capaDe = "";
     }
 
     private void irAlInicio() {
@@ -249,7 +285,7 @@ public class BloqueoServicio extends Service {
     public void onDestroy() {
         enMarcha = false;
         h.removeCallbacks(tic);
-        quitarCapa();
+        borrarCapa();
         super.onDestroy();
     }
 }
