@@ -23,7 +23,7 @@ function dia(f, h) {
       const s = enl.porTarea.get(t.id), p = proyectoDe(t.proyectoId);
       const hora = s ? `${s.ini.slice(11)}–${s.fin.slice(11)}` : t.hora || "";
       const sub = [t.fecha < f ? "Vencida" : "", hora, p?.nombre].filter(Boolean).join(" · ");
-      return { k: s?.ini.slice(11) || t.hora || "99:99", tipo: "t", id: t.id, titulo: t.titulo, color: p?.color || "#9A9AA2", sub, prio: t.prioridad || 4, vencida: t.fecha < f,
+      return { k: s?.ini.slice(11) || t.hora || "99:99", tipo: "t", id: t.id, titulo: t.titulo, color: p?.color || "#9A9AA2", sub, prio: t.prioridad || 4, vencida: t.fecha < f, estudio: !!s,
         ini: s ? s.ini.slice(11) : t.hora || "", fin: s ? s.fin.slice(11) : "" };
     }),
   ].sort((a, b) => (a.k < b.k ? -1 : a.k > b.k ? 1 : a.tipo === "e" ? -1 : 1));
@@ -45,8 +45,8 @@ export function actualizar() {
   }, 800);
 }
 
-/** Tareas marcadas en el widget y acción pedida (el + del widget) */
-export async function alVolver({ anadir } = {}) {
+/** Tareas marcadas en el widget y acción pedida desde un widget (el +, el reloj de Estudio…) */
+export async function alVolver(h = {}) {
   if (!esNativo() || !S.listo) return;
   let r;
   try { r = await llamar("Widget", "pendientes"); } catch { return; }
@@ -55,5 +55,11 @@ export async function alVolver({ anadir } = {}) {
     if (tarea && !tarea.hecha) await D.alternar(tarea).catch(() => {});
   }
   if (r?.hechas?.length) ultima = "";
-  if (r?.accion === "anadir" && anadir) anadir();
+  const a = r?.accion || "";
+  if (!a) return;
+  const [que, arg] = [a.split(":")[0], a.slice(a.indexOf(":") + 1)];
+  if (que === "anadir") h.anadir?.();
+  else if (que === "estudiar") h.estudiar?.(arg);
+  else if (que === "metodo") h.metodo?.(arg);
+  else if (["pausar", "reanudar", "parar", "ver-estudio"].includes(que)) h.reloj?.(que);
 }

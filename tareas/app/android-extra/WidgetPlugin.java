@@ -26,6 +26,12 @@ public class WidgetPlugin extends Plugin {
     }
 
     @PluginMethod
+    public void estudio(PluginCall call) {
+        TascaWidgetEstudio.guardarEstado(getContext(), call.getString("datos", "{}"), call.getLong("fin", 0L));
+        call.resolve();
+    }
+
+    @PluginMethod
     public void pendientes(PluginCall call) {
         SharedPreferences p = getContext().getSharedPreferences(TascaWidget.PREFS, Context.MODE_PRIVATE);
         Set<String> cola = p.getStringSet("cola", new HashSet<>());

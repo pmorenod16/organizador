@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent"
+    android:orientation="vertical" android:background="@drawable/widget_fondo"
+    android:paddingLeft="14dp" android:paddingRight="12dp" android:paddingTop="12dp" android:paddingBottom="6dp">
+    <LinearLayout android:id="@+id/e_cab" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
+        <TextView android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="📚 Estudio"
+            android:textSize="18sp" android:textStyle="bold" android:textColor="@color/widget_texto" />
+        <TextView android:id="@+id/e_estado" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="12sp" android:textColor="@color/widget_suave" />
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/e_marcha" android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:gravity="center_horizontal" android:paddingTop="4dp" android:visibility="gone">
+        <Chronometer android:id="@+id/e_reloj" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="46sp" android:fontFamily="sans-serif-light" android:textColor="@color/widget_resalte" />
+        <TextView android:id="@+id/e_titulo" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="14sp" android:textStyle="bold" android:textColor="@color/widget_texto" android:maxLines="1" android:ellipsize="end" />
+        <TextView android:id="@+id/e_texto" android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:textSize="12sp" android:textColor="@color/widget_suave" android:maxLines="1" android:ellipsize="end" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="8dp">
+            <TextView android:id="@+id/e_pausa" android:layout_width="0dp" android:layout_weight="1" android:layout_height="38dp" android:layout_margin="3dp"
+                android:gravity="center" android:text="Pausa" android:textSize="14sp" android:textColor="#FFFFFF" android:background="@drawable/widget_boton_largo" />
+            <TextView android:id="@+id/e_parar" android:layout_width="0dp" android:layout_weight="1" android:layout_height="38dp" android:layout_margin="3dp"
+                android:gravity="center" android:text="Parar" android:textSize="14sp" android:textColor="@color/widget_texto" android:background="@drawable/widget_chip" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/e_parado" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:paddingTop="4dp">
+        <TextView android:id="@+id/e_ayuda" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="4dp"
+            android:textSize="12sp" android:textColor="@color/widget_suave" android:text="Empieza a estudiar:" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <TextView android:id="@+id/e_m_pomodoro" android:layout_width="0dp" android:layout_weight="1" android:layout_height="34dp" android:layout_margin="3dp" android:gravity="center" android:text="Pomodoro" android:textSize="13sp" android:textColor="@color/widget_texto" android:background="@drawable/widget_chip" />
+            <TextView android:id="@+id/e_m_52" android:layout_width="0dp" android:layout_weight="1" android:layout_height="34dp" android:layout_margin="3dp" android:gravity="center" android:text="52/17" android:textSize="13sp" android:textColor="@color/widget_texto" android:background="@drawable/widget_chip" />
+            <TextView android:id="@+id/e_m_90" android:layout_width="0dp" android:layout_weight="1" android:layout_height="34dp" android:layout_margin="3dp" android:gravity="center" android:text="90/20" android:textSize="13sp" android:textColor="@color/widget_texto" android:background="@drawable/widget_chip" />
+        </LinearLayout>
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal">
+            <TextView android:id="@+id/e_m_flow" android:layout_width="0dp" android:layout_weight="1" android:layout_height="34dp" android:layout_margin="3dp" android:gravity="center" android:text="Flowtime" android:textSize="13sp" android:textColor="@color/widget_texto" android:background="@drawable/widget_chip" />
+            <TextView android:id="@+id/e_m_crono" android:layout_width="0dp" android:layout_weight="1" android:layout_height="34dp" android:layout_margin="3dp" android:gravity="center" android:text="Cronómetro" android:textSize="13sp" android:textColor="@color/widget_texto" android:background="@drawable/widget_chip" />
+            <TextView android:id="@+id/e_m_cuenta" android:layout_width="0dp" android:layout_weight="1" android:layout_height="34dp" android:layout_margin="3dp" android:gravity="center" android:text="Temporizador" android:textSize="13sp" android:textColor="@color/widget_texto" android:background="@drawable/widget_chip" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp"
+        android:text="Para estudiar hoy" android:textSize="12sp" android:textStyle="bold" android:textColor="@color/widget_suave" />
+    <FrameLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1">
+        <ListView android:id="@+id/e_lista" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:divider="@null" android:dividerHeight="0dp" android:scrollbars="none" />
+        <TextView android:id="@+id/e_vacio" android:layout_width="match_parent" android:layout_height="match_parent"
+            android:gravity="center" android:text="No hay tareas para hoy" android:textSize="13sp" android:textColor="@color/widget_suave" />
+    </FrameLayout>
+</LinearLayout>

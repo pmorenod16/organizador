@@ -19,13 +19,14 @@ import org.json.JSONObject;
 /** Filas del widget: eventos y tareas de hoy por hora */
 public class WidgetServicio extends RemoteViewsService {
     @Override
-    public RemoteViewsFactory onGetViewFactory(Intent intent) { return new Filas(getApplicationContext()); }
+    public RemoteViewsFactory onGetViewFactory(Intent intent) { return new Filas(getApplicationContext(), intent.getBooleanExtra("estudio", false)); }
 
     static class Filas implements RemoteViewsFactory {
         private final Context c;
         private final List<JSONObject> items = new ArrayList<>();
         private Set<String> hechas = new HashSet<>();
-        Filas(Context c) { this.c = c; }
+        private final boolean estudio;
+        Filas(Context c, boolean estudio) { this.c = c; this.estudio = estudio; }
 
         @Override public void onCreate() {}
         @Override public void onDestroy() {}
@@ -40,7 +41,11 @@ public class WidgetServicio extends RemoteViewsService {
             items.clear();
             hechas = new HashSet<>(c.getSharedPreferences(TascaWidget.PREFS, Context.MODE_PRIVATE).getStringSet("hechas", new HashSet<>()));
             JSONArray l = TascaWidget.deHoy(c);
-            if (l != null) for (int k = 0; k < l.length(); k++) { JSONObject x = l.optJSONObject(k); if (x != null) items.add(x); }
+            if (l != null) for (int k = 0; k < l.length(); k++) { JSONObject x = l.optJSONObject(k); if (x == null) continue;
+                // en el widget de Estudio, solo las tareas pendientes (primero las que tienen sesión de estudio)
+                if (estudio && (!"t".equals(x.optString("tipo")) || hechas.contains(x.optString("id")))) continue;
+                items.add(x); }
+            if (estudio) { List<JSONObject> ses = new ArrayList<>(), resto = new ArrayList<>(); for (JSONObject x : items) (x.optBoolean("estudio") ? ses : resto).add(x); items.clear(); items.addAll(ses); items.addAll(resto); }
         }
 
         private int color(String s, int defecto) { try { return Color.parseColor(s); } catch (Exception e) { return defecto; } }
@@ -75,7 +80,14 @@ public class WidgetServicio extends RemoteViewsService {
                 Intent marcar = new Intent(); marcar.putExtra("hecha", id);
                 v.setOnClickFillInIntent(check, marcar);
             } else v.setInt(barra, "setColorFilter", col);
-            v.setOnClickFillInIntent(TascaWidget.id(c, "id", "f_texto"), new Intent().putExtra("abrir", true));
+            if (estudio) {
+                v.setViewVisibility(check, View.GONE);
+                v.setViewVisibility(barra, View.VISIBLE);
+                v.setInt(barra, "setColorFilter", col);
+                if (x.optBoolean("estudio")) v.setTextViewText(TascaWidget.id(c, "id", "f_titulo"), "📚 " + titulo);
+                v.setOnClickFillInIntent(TascaWidget.id(c, "id", "f_texto"), new Intent().putExtra("tasca_accion", "estudiar:" + id));
+                v.setOnClickFillInIntent(barra, new Intent().putExtra("tasca_accion", "estudiar:" + id));
+            } else v.setOnClickFillInIntent(TascaWidget.id(c, "id", "f_texto"), new Intent().putExtra("abrir", true));
             return v;
         }
     }

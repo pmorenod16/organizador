@@ -170,6 +170,9 @@ function reloj() {
   const clave = JSON.stringify(args);
   if (clave === ultimoReloj) return;
   ultimoReloj = clave;
+  // el widget de Estudio de la pantalla de inicio
+  const w = { estado: P.estado, titulo: args?.titulo || "", texto: args?.texto || "", base: args?.base || 0, cuentaAtras: args ? args.cuentaAtras !== false : true, restante: args?.restante || 0 };
+  llamar("Widget", "estudio", { datos: JSON.stringify(w), fin: P.estado === "corriendo" && w.cuentaAtras ? P.fin : 0 }).catch(() => {});
   (args ? llamar("Temporizador", "mostrar", args) : llamar("Temporizador", "ocultar")).catch(() => {}); // APK antiguo: sin el plugin
 }
 

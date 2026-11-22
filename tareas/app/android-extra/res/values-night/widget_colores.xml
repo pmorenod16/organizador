@@ -4,4 +4,5 @@
     <color name="widget_texto">#ECECEE</color>
     <color name="widget_suave">#9A9CA4</color>
     <color name="widget_resalte">#8E80C4</color>
+    <color name="widget_chip">#2E2F36</color>
 </resources>

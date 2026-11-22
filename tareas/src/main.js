@@ -111,7 +111,7 @@ window.addEventListener("hashchange", () => { leerRuta(); pintar(); window.scrol
 D.alCambiar((s, err) => {
   if (err) { if (!s.listo) fallo("No se pueden leer los datos: " + (err.code || err.message)); else toast("Sin permiso o sin conexión con la base de datos"); return; }
   if (!s.listo) return;
-  if (!$("#carga").hidden) { mostrar("app"); primeraCarga(); setTimeout(() => W.alVolver({ anadir: () => anadir({ fecha: hoyISO() }) }), 300); }
+  if (!$("#carga").hidden) { mostrar("app"); primeraCarga(); setTimeout(() => W.alVolver(accionesWidget), 300); }
   tema(s.ajustes.tema); color(s.ajustes.color); try { localStorage.setItem("tasca.tema", s.ajustes.tema || "auto"); localStorage.setItem("tasca.color", s.ajustes.color || "violeta"); } catch {}
   pintar();
   reprogramar();
@@ -368,6 +368,17 @@ document.addEventListener("keydown", e => {
 
 // ---------- pomodoro ----------
 /** «Empezar estudio»: Enfoque listo con la tarea, sus pasos y los pomodoros que caben en la sesión del calendario */
+// lo que se pide desde los widgets de la pantalla de inicio
+const accionesWidget = {
+  anadir: () => anadir({ fecha: hoyISO() }),
+  estudiar: id => estudiar(id),
+  metodo: tipo => {
+    if (P.estado().estado !== "parado") { location.hash = "#/enfoque"; return; }
+    P.elegirTipo(tipo); P.planificar(null); P.elegirLibre(null); UI.sesion = null; guardarUI();
+    P.elegirModo("foco"); P.empezar(null); location.hash = "#/enfoque";
+  },
+  reloj: que => { if (que !== "ver-estudio") P[que](); location.hash = "#/enfoque"; },
+};
 async function estudiar(id) {
   const t = S.tareas.find(x => x.id === id); if (!t) return;
   const ses = t.fecha ? Cal.enlacesDia(t.fecha).porTarea.get(id) : null;
@@ -439,7 +450,7 @@ document.addEventListener("visibilitychange", () => {
     notificarWeb(`${e.modo === "foco" ? P.metodo().nombre : P.NOMBRES[e.modo]} en marcha${e.plan ? ` · bloque ${Math.min(e.hechos + (e.modo === "foco" ? 1 : 0), e.plan)} de ${e.plan}` : ""}`, `Termina a las ${fin} (quedan ${Math.ceil((e.fin - Date.now()) / 60000)} min).`, "reloj");
   }
 });
-document.addEventListener("visibilitychange", () => { if (!document.hidden) { P.comprobar(); Bl.sincronizar(P.estado(), P.subiendo(), true); if (S.listo) { pintar(); Cal.recargar(); W.alVolver({ anadir: () => anadir({ fecha: hoyISO() }) }); } } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { P.comprobar(); Bl.sincronizar(P.estado(), P.subiendo(), true); if (S.listo) { pintar(); Cal.recargar(); W.alVolver(accionesWidget); } } });
 document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && UI.pantallaCompleta) { UI.pantallaCompleta = false; pintar(); } });
 $("#miniFoco").addEventListener("click", e => { const b = e.target.closest("[data-mini-p]"); if (b) { e.preventDefault(); P[b.dataset.miniP](); } });
 

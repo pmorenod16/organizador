@@ -43,6 +43,7 @@ public class TascaWidget extends AppWidgetProvider {
         for (int i : ids) pintar(c, m, i);
         m.notifyAppWidgetViewDataChanged(ids, id(c, "id", "w_lista"));
         TascaWidgetMini.refrescar(c);
+        TascaWidgetEstudio.refrescar(c);
     }
 
     private static PendingIntent abrirApp(Context c, String accion, int codigo) {
