@@ -524,6 +524,7 @@ v.addEventListener("click", async e => {
   // ajustes
   if (d.permiso !== undefined) { await A.activarPermiso(); pintar(); return; }
   if (d.exportar !== undefined) return A.exportar();
+  if (d.bloqProbar !== undefined) return Bl.probar();
   if (d.bloqUso !== undefined) return Bl.abrirUso();
   if (d.bloqSuperponer !== undefined) return Bl.abrirSuperponer();
   if (d.bloqXiaomi !== undefined) return Bl.abrirXiaomi();

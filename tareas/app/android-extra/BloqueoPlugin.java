@@ -47,6 +47,9 @@ public class BloqueoPlugin extends Plugin {
     public void estado(PluginCall call) {
         JSObject r = new JSObject();
         r.put("uso", accesoUso());
+        r.put("servicio", BloqueoServicio.enMarcha);
+        r.put("ultimaApp", BloqueoServicio.ultimaVista);
+        r.put("hasta", getContext().getSharedPreferences(BloqueoServicio.PREFS, Context.MODE_PRIVATE).getLong("hasta", 0L));
         r.put("superponer", superponer());
         r.put("activo", accesoUso() && superponer());
         r.put("fabricante", Build.MANUFACTURER);
@@ -140,10 +143,11 @@ public class BloqueoPlugin extends Plugin {
         for (int i = 0; i < lista.length(); i++) { try { apps.add(lista.getString(i)); } catch (Exception ignored) {} }
         long hasta = call.getLong("hasta", 0L);
         getContext().getSharedPreferences(BloqueoServicio.PREFS, Context.MODE_PRIVATE).edit().putStringSet("apps", apps).putLong("hasta", hasta).commit();
+        JSObject r = new JSObject();
         try {
-            if (hasta > System.currentTimeMillis() && !apps.isEmpty() && accesoUso()) BloqueoServicio.arrancar(getContext());
-            else BloqueoServicio.parar(getContext());
-        } catch (Exception e) { /* Android no deja arrancarlo desde segundo plano: lo hará al volver a la app */ }
-        call.resolve();
+            if (hasta > System.currentTimeMillis() && !apps.isEmpty() && accesoUso()) { BloqueoServicio.arrancar(getContext()); r.put("arrancado", true); }
+            else { BloqueoServicio.parar(getContext()); r.put("arrancado", false); }
+        } catch (Exception e) { r.put("arrancado", false); r.put("error", e.getClass().getSimpleName() + ": " + e.getMessage()); }
+        call.resolve(r);
     }
 }

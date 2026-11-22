@@ -50,6 +50,8 @@ public class BloqueoServicio extends Service {
     private WindowManager wm;
     private View capa;
     private String delante = "";
+    static volatile boolean enMarcha = false;
+    static volatile String ultimaVista = "";
 
     public static void arrancar(Context c) {
         Intent i = new Intent(c, BloqueoServicio.class);
@@ -64,6 +66,7 @@ public class BloqueoServicio extends Service {
     @Override
     public int onStartCommand(Intent i, int flags, int id) {
         primerPlano();
+        enMarcha = true;
         h.removeCallbacks(tic);
         h.post(tic);
         return START_STICKY;
@@ -97,7 +100,7 @@ public class BloqueoServicio extends Service {
             long ahora = System.currentTimeMillis(), hasta = p.getLong("hasta", 0L);
             if (ahora >= hasta) { quitarCapa(); stopSelf(); return; }
             String app = appDelante();
-            if (app != null) delante = app;
+            if (app != null) { delante = app; ultimaVista = app; }
             Set<String> apps = p.getStringSet("apps", Collections.<String>emptySet());
             boolean tapar = apps != null && apps.contains(delante) && !delante.equals(getPackageName());
             if (tapar) mostrarCapa(delante, hasta); else quitarCapa();
@@ -226,6 +229,7 @@ public class BloqueoServicio extends Service {
 
     @Override
     public void onDestroy() {
+        enMarcha = false;
         h.removeCallbacks(tic);
         quitarCapa();
         super.onDestroy();

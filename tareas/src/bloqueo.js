@@ -43,7 +43,9 @@ export function sincronizar(P, subiendo, forzar) {
   const clave = Math.round(hasta / 60000) + "|" + c.apps.join(",");
   if (clave === ultima) return;
   ultima = clave;
-  llamar("Bloqueo", "configurar", { apps: c.apps, hasta }).catch(() => {}); // APK antiguo: sin el plugin
+  llamar("Bloqueo", "configurar", { apps: c.apps, hasta })
+    .then(r => { if (r?.error) toast("El bloqueo no ha podido arrancar: " + r.error); })
+    .catch(() => {}); // APK antiguo: sin el plugin
 }
 export const bloqueando = P => esNativo() && conf().activo && conf().apps.length && P.estado === "corriendo" && (P.modo === "foco" || conf().descansos);
 export const nombresBloqueadas = () => {
@@ -79,6 +81,7 @@ export async function rellenar(el) {
       </ol>
       <p class="suave peque">Si sale <b>«Ajuste restringido»</b>: abre la info de Tasca → ⋮ arriba a la derecha → <b>Permitir ajustes restringidos</b>. Tasca solo mira qué app está abierta; no lee nada de lo que hay dentro.</p></div>` : c.activo ? `<p class="ok-bloqueo">✓ Permisos activados</p>` : ""}
     <div class="fila-ajuste"><span>Apps bloqueadas<small class="suave bloq-lista">${elegidas.length ? esc(elegidas.slice(0, 4).map(a => a.nombre).join(", ")) + (elegidas.length > 4 ? ` y ${elegidas.length - 4} más` : "") : "ninguna"}</small></span><button class="btn peque" data-bloq-elegir>Elegir</button></div>
+    ${c.activo ? `<div class="fila-ajuste"><span>Probar el bloqueo<small class="suave">Bloquea 1 minuto las apps elegidas, sin reloj.${est.servicio ? ` Ahora está en marcha${est.ultimaApp ? ` (última app vista: ${esc(est.ultimaApp)})` : ""}.` : ""}</small></span><button class="btn peque" data-bloq-probar>Probar 1 min</button></div>` : ""}
     <label class="fila-ajuste"><span>Bloquear también en los descansos</span><input type="checkbox" class="sw" data-bloq="descansos" ${c.descansos ? "checked" : ""}></label>`;
 }
 
@@ -111,4 +114,17 @@ export async function elegir() {
   el.querySelector("[data-juegos]").onclick = () => { ls.filter(a => a.juego).forEach(a => sel.add(a.app)); el.querySelector("[data-lista]").innerHTML = pintarLista(q.value); };
   el.querySelector("[data-ninguna]").onclick = () => { sel.clear(); el.querySelector("[data-lista]").innerHTML = pintarLista(q.value); };
   el.querySelector("[data-listo]").onclick = () => el.cerrar();
+}
+
+/** Bloquea 1 minuto para comprobar que funciona */
+export async function probar() {
+  const c = conf();
+  if (!c.apps.length) return toast("Primero elige qué apps bloquear");
+  let est; try { est = await llamar("Bloqueo", "estado"); } catch { return toast("Hace falta el APK nuevo"); }
+  if (!est.uso) return toast("Falta el permiso «Acceso al uso»");
+  if (!est.superponer) return toast("Falta el permiso «Mostrar sobre otras apps»");
+  const r = await llamar("Bloqueo", "configurar", { apps: c.apps, hasta: Date.now() + 60e3 });
+  ultima = "";
+  if (r?.error) return toast("No ha podido arrancar: " + r.error);
+  toast("Bloqueo de prueba durante 1 minuto: abre ahora una de las apps");
 }
