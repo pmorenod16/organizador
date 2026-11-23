@@ -756,3 +756,9 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .tarea-foco span.cambiar { margin-left: auto; }
 .permiso-bloqueo li.hecho { color: var(--suave, #75777f); }
 .permiso-bloqueo li .botones-izq { margin-top: 6px; }
+.instrucciones { margin-top: 10px; }
+.instrucciones summary { cursor: pointer; font-weight: 600; padding: 6px 0; }
+.instrucciones ol { padding-left: 20px; margin: 6px 0; }
+.instrucciones li { margin-bottom: 8px; line-height: 1.45; }
+.instrucciones li .btn { margin-top: 4px; }
+.fila-ajuste input[type="email"] { min-width: 0; flex: 1; max-width: 240px; text-align: right; }

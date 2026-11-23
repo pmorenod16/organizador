@@ -10,6 +10,7 @@ import { esNativo } from "./nativo.js";
 import { icono } from "./lista.js";
 import * as Cal from "./calendarios.js";
 import * as Bl from "./bloqueo.js";
+import * as Co from "./correo.js";
 
 export const APK_URL = "https://github.com/pmorenod16/organizador/releases/download/tasca/tasca.apk";
 
@@ -38,6 +39,7 @@ export function ajustes({ email, version }) {
     ${Cal.lista().length ? `<label class="fila-ajuste"><span>Mostrar los eventos</span><input type="checkbox" class="sw" data-aj="verEventos" ${a.verEventos !== false ? "checked" : ""}></label>` : ""}
   </section>
   ${Bl.caja()}
+  ${Co.caja()}
   <section class="caja">
     <h2>Recordatorios</h2>
     ${esNativo() ? `<p class="suave">Los avisos llegan aunque la app esté cerrada. En los Xiaomi: mantén pulsado el icono → Información de la app → Ahorro de batería: <b>Sin restricciones</b> e Inicio automático: <b>activado</b>.</p>`

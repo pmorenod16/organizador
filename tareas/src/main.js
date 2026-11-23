@@ -20,6 +20,7 @@ import * as Act from "./actualizar.js";
 import * as Cal from "./calendarios.js";
 import * as Bl from "./bloqueo.js";
 import * as W from "./widget.js";
+import * as Co from "./correo.js";
 import { fechaBonita, minutosTexto } from "./fechas.js";
 import { minutosEntre } from "./sesiones.js";
 import { conEnlaces } from "./ui.js";
@@ -543,6 +544,8 @@ v.addEventListener("click", async e => {
   if (d.bloqXiaomi !== undefined) return Bl.abrirXiaomi();
   if (d.bloqInfo !== undefined) return Bl.abrirInfo();
   if (d.bloqElegir !== undefined) return Bl.elegir();
+  if (d.correoCopiar) return Co.copiar(d.correoCopiar);
+  if (d.correoHecho !== undefined) return Co.hecho();
   if (d.color) { color(d.color); D.guardarAjustes({ color: d.color }); return; }
   if (d.actualizar !== undefined) return Act.comprobar({ manual: true });
   if (d.salir !== undefined) return salir();
@@ -551,6 +554,7 @@ v.addEventListener("click", async e => {
 v.addEventListener("change", async e => {
   const x = e.target;
   if (x.dataset.bloq) { await Bl.cambiar(x.dataset.bloq, x.checked); Bl.sincronizar(P.estado(), P.subiendo()); if (x.dataset.bloq === "activo" && x.checked) toast("Ahora da el permiso de Android si te lo pide"); return; }
+  if (x.dataset.correo) { Co.cambiar(x); return; }
   if (x.dataset.aj) { A.cambiarAjuste(x); if (x.dataset.aj === "verEventos") Cal.recargar(true); return; }
   if (x.dataset.calActivo !== undefined) { A.activarCalendario(Number(x.dataset.calActivo), x.checked); return; }
   if (x.dataset.importar !== undefined && x.files.length) { A.importar([...x.files]); x.value = ""; return; }
