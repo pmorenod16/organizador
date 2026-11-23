@@ -1,10 +1,33 @@
 rules_version = '2';
 // Cada cuenta de Google solo puede leer y escribir sus propios datos (usuarios/{su uid}/…).
-// Así Tasca la puede usar más de una persona, cada una con sus tareas, sin ver las de los demás.
+// Los proyectos compartidos viven en compartidos/{id}: los ven y editan sus miembros; los invitados (por su
+// correo de Google) solo pueden verlo para aceptar o rechazar la invitación.
 service cloud.firestore {
   match /databases/{database}/documents {
     match /usuarios/{uid}/{document=**} {
       allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+
+    match /compartidos/{pid} {
+      function correo() { return request.auth.token.email.lower(); }
+      function miembro() { return request.auth.uid in resource.data.miembros; }
+      function invitado() { return request.auth.token.email != null && correo() in resource.data.invitados; }
+
+      allow read: if request.auth != null && (miembro() || invitado());
+      allow create: if request.auth != null
+        && request.resource.data.dueno == request.auth.uid
+        && request.resource.data.miembros == [request.auth.uid];
+      // los miembros lo pueden cambiar todo; un invitado solo puede aceptar (entrar) o rechazar (quitarse)
+      allow update: if request.auth != null && (miembro() || (invitado()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['miembros', 'invitados', 'nombres', 'correos'])
+        && !(correo() in request.resource.data.invitados)
+        && request.resource.data.miembros.toSet().difference(resource.data.miembros.toSet()).hasOnly([request.auth.uid])));
+      allow delete: if request.auth != null && resource.data.dueno == request.auth.uid;
+
+      match /tareas/{tid} {
+        allow read, write: if request.auth != null
+          && request.auth.uid in get(/databases/$(database)/documents/compartidos/$(pid)).data.miembros;
+      }
     }
   }
 }

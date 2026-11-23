@@ -762,3 +762,18 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .instrucciones li { margin-bottom: 8px; line-height: 1.45; }
 .instrucciones li .btn { margin-top: 4px; }
 .fila-ajuste input[type="email"] { min-width: 0; flex: 1; max-width: 240px; text-align: right; }
+/* ---- proyectos compartidos ---- */
+.invitacion { display: flex; gap: 12px; align-items: flex-start; padding: 14px 16px; margin: 0 0 14px; }
+.invitacion .ico-inv { font-size: 22px; line-height: 1; }
+.invitacion .botones-izq { margin-top: 10px; }
+.marca-comp { font-size: 12px; opacity: .75; margin-left: 4px; }
+.hoja-compartir h3 { font-size: 13px; color: var(--suave); margin: 18px 0 6px; text-transform: uppercase; letter-spacing: .04em; }
+.fila-invitar { display: flex; gap: 8px; margin: 14px 0 4px; }
+.fila-invitar input { flex: 1; min-width: 0; }
+.miembros { list-style: none; padding: 0; margin: 0; }
+.miembros li { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+.miembros li > span:nth-child(2) { flex: 1; min-width: 0; }
+.miembros .avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; background: var(--resalte); color: var(--resalte-texto); font-weight: 600; flex: none; }
+.miembros .avatar.suave { background: var(--fondo-2, #eee); color: var(--suave); }
+.bloque { display: block; }
+.hoja-compartir .btn.peligro { margin-top: 18px; }

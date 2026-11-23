@@ -21,6 +21,7 @@ import * as Cal from "./calendarios.js";
 import * as Bl from "./bloqueo.js";
 import * as W from "./widget.js";
 import * as Co from "./correo.js";
+import * as Comp from "./compartir.js";
 import { fechaBonita, minutosTexto } from "./fechas.js";
 import { minutosEntre } from "./sesiones.js";
 import { conEnlaces } from "./ui.js";
@@ -88,7 +89,7 @@ Au.onAuthStateChanged(auth, user => {
   $("#cargaTexto").textContent = "Cargando tus tareas…";
   mostrar("carga");
   Cal.usarToken(() => user.getIdToken());
-  D.iniciar(F, db, user.uid);
+  D.iniciar(F, db, user);
 });
 
 // ---------- estado de la interfaz ----------
@@ -304,7 +305,7 @@ function pintarMenu() {
       ${it("hechas", "Completadas", "hecho", "", "var(--suave)")}
     </nav>
     <h3>Mis proyectos <button class="icono peque" data-nuevo-proyecto aria-label="Añadir proyecto">${icono("mas")}</button></h3>
-    <nav>${S.proyectos.filter(p => !p.archivado).map(p => it("proyecto/" + p.id, esc(p.nombre), "almohadilla", contar("proyecto", { proyectoId: p.id }), p.color)).join("") || `<p class="suave peque">Crea uno por asignatura o importa tus CSV de Todoist.</p>`}
+    <nav>${S.proyectos.filter(p => !p.archivado).map(p => it("proyecto/" + p.id, esc(p.nombre) + (p.compartido ? ' <span class="marca-comp" title="Compartido">👥</span>' : ""), "almohadilla", contar("proyecto", { proyectoId: p.id }), p.color)).join("") || `<p class="suave peque">Crea uno por asignatura o importa tus CSV de Todoist.</p>`}
       <button class="enlace-menu" data-importar-abrir>${icono("importar")} Importar CSV de Todoist</button></nav>
     <nav class="pie-menu">${it("ajustes", "Ajustes", "ajustes")}</nav>`;
   const pes = pestanaDe(UI.ruta);
@@ -499,6 +500,9 @@ v.addEventListener("click", async e => {
   if (d.irDia) { const g = document.getElementById("d-" + d.irDia); if (g) g.scrollIntoView({ behavior: "smooth", block: "start" }); else anadir({ fecha: d.irDia }); return; }
   if (d.menuVista !== undefined) return menuVista();
   if (d.menuProyecto) return menuProyecto(d.menuProyecto);
+  if (d.invAceptar) return Comp.aceptar(d.invAceptar);
+  if (d.invRechazar) return Comp.rechazar(d.invRechazar);
+  if (d.compartirProyecto) return Comp.abrir(d.compartirProyecto);
   if (d.menuSeccion) return menuSeccion(UI.arg, d.menuSeccion);
   if (d.nuevaSeccion) return nuevaSeccion(d.nuevaSeccion);
   if (d.foco) return alFoco(d.foco);
@@ -585,14 +589,19 @@ async function menuVista() {
 async function menuProyecto(id) {
   const p = S.proyectos.find(x => x.id === id); if (!p) return;
   const r = await menu([
+    { id: "compartir", texto: p.compartido ? `Compartido · ${(p.miembros || []).length} personas` : "Compartir proyecto", icono: "personas" },
     { id: "editar", texto: "Editar proyecto", icono: "almohadilla" },
     { id: "seccion", texto: "Añadir sección", icono: "seccion" },
     { id: "hechas", texto: UI.verHechas[id] ? "Ocultar completadas" : "Mostrar completadas", icono: "hecho" },
     { id: "importar", texto: "Importar CSV de Todoist aquí", icono: "importar" },
     { id: "foco", texto: "Estudiar la siguiente tarea", icono: "libro" },
     { id: "archivar", texto: p.archivado ? "Desarchivar" : "Archivar", icono: "carpeta" },
-    { id: "borrar", texto: "Eliminar proyecto", icono: "cerrar", peligro: true },
+    p.compartido && p.dueno !== D.usuario().uid && (p.miembros || []).length > 1
+      ? { id: "salir", texto: "Salir del proyecto", icono: "cerrar", peligro: true }
+      : { id: "borrar", texto: p.compartido ? "Eliminar proyecto (para todos)" : "Eliminar proyecto", icono: "cerrar", peligro: true },
   ], p.nombre);
+  if (r === "compartir") return Comp.abrir(id);
+  if (r === "salir") { if (await confirmar(`¿Salir de «${p.nombre}»? Dejarás de ver sus tareas (los demás las seguirán teniendo).`, { si: "Salir", peligro: true })) { await D.salirDe(id); toast("Has salido del proyecto"); location.hash = "#/explorar"; } return; }
   if (r === "editar") A.editarProyecto(id, () => (location.hash = "#/explorar"));
   else if (r === "seccion") nuevaSeccion(id);
   else if (r === "hechas") { UI.verHechas[id] = !UI.verHechas[id]; guardarUI(); pintar(); }

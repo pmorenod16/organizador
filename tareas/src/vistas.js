@@ -6,6 +6,7 @@ import * as Cal from "./calendarios.js";
 import { deVista, hijosPorPadre, compararManual, comparar } from "./logica.js";
 import { hoyISO, sumarDias, DIAS_CORTOS, DIAS, MESES, lunesDe, diaSemana, aDate } from "./fechas.js";
 import { seccionesDe } from "./selectores.js";
+import { invitacionesHtml } from "./compartir.js";
 
 /** Cabecera: título grande, y a la derecha los botones (atrás a la izquierda si hace falta) */
 export const cab = (titulo, { sub = "", atras = "", acciones = "" } = {}) =>
@@ -35,7 +36,7 @@ export function hoy() {
   const tarde = l.filter(t => t.fecha < h), deHoy = l.filter(t => t.fecha === h);
   const enl = Cal.enlacesDia(h);
   const hechasHoy = S.tareas.filter(t => t.hecha && t.hechaEn && new Date(t.hechaEn).toDateString() === new Date().toDateString() && !t.padreId).length;
-  return cab("Hoy", { sub: l.length ? `${icono("hecho")} ${l.length} ${l.length === 1 ? "tarea" : "tareas"}` : "", acciones: botonBuscar + botonMenu("data-menu-vista") }) +
+  return cab("Hoy", { sub: l.length ? `${icono("hecho")} ${l.length} ${l.length === 1 ? "tarea" : "tareas"}` : "", acciones: botonBuscar + botonMenu("data-menu-vista") }) + invitacionesHtml() +
     (tarde.length ? `<h2 class="grupo tarde-t">Vencidas <span>${tarde.length}</span><button class="enlace" data-reprogramar="hoy">Reprogramar</button></h2><ul class="lista">${filas(tarde)}</ul>` : "") +
     `<h2 class="grupo">${esc(diaTitulo(h))} · Hoy</h2>` + horario(h, deHoy, enl) + filaAnadir({ fecha: h }) +
     (!l.length && !Cal.delDia(h).length ? vacio(hechasHoy ? "¡Todo hecho por hoy!" : "Disfruta del día", hechasHoy ? `Has completado ${hechasHoy} ${hechasHoy === 1 ? "tarea" : "tareas"}.` : "No tienes nada para hoy.") : "");
@@ -130,7 +131,8 @@ export function proyecto(id, { verHechas = false } = {}) {
       ${l.length ? `<ul class="lista">${filas(l, { proyecto: false, hijos, verHechas })}</ul>` : ""}
       ${filaAnadir({ proyectoId: id, seccion: s || null })}
     </section>`;
-  return cab(`<span style="color:${esc(p.color)}">#</span> ${esc(p.nombre)}`, { atras: "#/explorar", sub: `${pct}% completado · ${hechas}/${todas.length}`, acciones: botonMenu(`data-menu-proyecto="${esc(p.id)}"`, "Opciones del proyecto") }) +
+  const compartidoCon = p.compartido ? (p.miembros || []).length : 0;
+  return cab(`<span style="color:${esc(p.color)}">#</span> ${esc(p.nombre)}`, { atras: "#/explorar", sub: `${pct}% completado · ${hechas}/${todas.length}${compartidoCon > 1 ? ` · 👥 ${compartidoCon} personas` : ""}`, acciones: `<button class="icono" data-compartir-proyecto="${esc(p.id)}" aria-label="Compartir">${icono("personas")}</button>` + botonMenu(`data-menu-proyecto="${esc(p.id)}"`, "Opciones del proyecto") }) +
     `<div class="barra grande"><i style="width:${pct}%;background:${esc(p.color)}"></i></div>` +
     bloque("", sinSeccion) + secs.map(s => bloque(s, raiz.filter(t => t.seccion === s))).join("") +
     `<button class="fila-anadir seccion-nueva" data-nueva-seccion="${esc(id)}"><span>${icono("seccion")}</span>Añadir sección</button>` +
@@ -164,12 +166,12 @@ export function explorar() {
   const n = id => deVista("proyecto", S.tareas, hoyISO(), { proyectoId: id }).length;
   const it = (href, ico, nombre, extra = "", color = "") => `<a href="${href}"><span style="${color ? "color:" + color : ""}">${icono(ico)}</span><span>${nombre}</span>${extra ? `<small>${extra}</small>` : ""}</a>`;
   const activos = S.proyectos.filter(p => !p.archivado), archivados = S.proyectos.filter(p => p.archivado);
-  return cab("Proyectos", { acciones: botonBuscar + `<a class="icono" href="#/ajustes" aria-label="Ajustes">${icono("ajustes")}</a>` }) +
+  return cab("Proyectos", { acciones: botonBuscar + `<a class="icono" href="#/ajustes" aria-label="Ajustes">${icono("ajustes")}</a>` }) + invitacionesHtml() +
     `<nav class="lista-nav tarjeta">
       ${it("#/bandeja", "bandeja", "Bandeja de entrada", deVista("bandeja", S.tareas, hoyISO()).length || "", "var(--p3)")}
     </nav>
     <h2 class="grupo">Mis proyectos <button class="icono peque" data-nuevo-proyecto aria-label="Añadir proyecto">${icono("mas")}</button></h2>
-    <nav class="lista-nav tarjeta">${activos.map(p => it(`#/proyecto/${esc(p.id)}`, "almohadilla", esc(p.nombre), n(p.id) || "", p.color)).join("") || `<p class="suave peque relleno">Crea un proyecto por asignatura con el + o importa tus CSV de Todoist.</p>`}
+    <nav class="lista-nav tarjeta">${activos.map(p => it(`#/proyecto/${esc(p.id)}`, "almohadilla", esc(p.nombre) + (p.compartido ? ' <span class="marca-comp" title="Compartido">👥</span>' : ""), n(p.id) || "", p.color)).join("") || `<p class="suave peque relleno">Crea un proyecto por asignatura con el + o importa tus CSV de Todoist.</p>`}
       <button class="fila-anadir dentro" data-importar-abrir><span>${icono("importar")}</span>Importar CSV de Todoist</button></nav>
     <h2 class="grupo">Más</h2>
     <nav class="lista-nav tarjeta">
