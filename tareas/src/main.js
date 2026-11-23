@@ -1,5 +1,5 @@
 // Tasca: arranque, inicio de sesión, navegación y eventos.
-import { firebaseConfig, OWNER_UID } from "../../config.js";
+import { firebaseConfig } from "../../config.js";
 import * as D from "./datos.js";
 import { S } from "./datos.js";
 import { $, $$, esc, toast, hoja, hayHoja, vibrar } from "./ui.js";
@@ -83,11 +83,6 @@ $("#btnSalir").onclick = salir;
 let usuario = null;
 Au.onAuthStateChanged(auth, user => {
   if (!user) { mostrar("login"); return; }
-  if (user.uid !== OWNER_UID) {
-    $("#uidTexto").textContent = user.uid;
-    mostrar("sinAcceso");
-    return;
-  }
   if (usuario) return;
   usuario = user;
   $("#cargaTexto").textContent = "Cargando tus tareas…";

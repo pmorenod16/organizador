@@ -1,6 +1,6 @@
 import { test, expect } from "vitest";
 import { SignJWT, generateKeyPair } from "jose";
-import { verificarToken } from "../src/auth.js";
+import { verificarToken, usuarioDe } from "../src/auth.js";
 
 const projectId = "organizador-test";
 const { publicKey, privateKey } = await generateKeyPair("RS256");
@@ -20,4 +20,9 @@ test("token de otro proyecto → false", async () => {
 });
 test("basura → false", async () => {
   expect(await verificarToken("no-es-un-token", { projectId, ownerUid: "dueno", claves })).toBe(false);
+});
+test("usuarioDe devuelve el UID de cualquier cuenta válida", async () => {
+  expect(await usuarioDe(await firmar("pareja"), { projectId, claves })).toBe("pareja");
+  expect(await usuarioDe(await firmar("pareja", "otro-proyecto"), { projectId, claves })).toBe(null);
+  expect(await usuarioDe("basura", { projectId, claves })).toBe(null);
 });
