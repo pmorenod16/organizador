@@ -73,6 +73,8 @@ export function iniciar(firestore, baseDatos, user) {
   const desde = Date.now() - 120 * 864e5;
   F.onSnapshot(F.query(col("focos"), F.where("inicio", ">=", desde)), una(s => { S.focos = s.docs.map(d => d.data()); }), err);
   F.onSnapshot(doc("config", "ajustes"), una(s => { S.ajustes = { ...AJUSTES_BASE, ...(s.exists() ? s.data() : {}) }; }), err);
+  // el reloj de Estudio, compartido entre tus dispositivos
+  F.onSnapshot(doc("config", "reloj"), s => { if (s.exists()) alReloj?.(s.data()); }, e => console.warn("reloj", e));
 }
 
 // ---------- proyectos ----------
@@ -185,6 +187,9 @@ export async function cambiarMuchas(lista) {
 }
 
 // ---------- pomodoro ----------
+let alReloj = null;
+export const escucharReloj = fn => { alReloj = fn; };
+export const guardarReloj = p => (F ? F.setDoc(doc("config", "reloj"), limpio(p)).catch(e => console.warn("reloj", e)) : null);
 export function guardarFoco(f) { const x = { id: nuevoId(), ...f }; F.setDoc(doc("focos", x.id), limpio(x)); return x; }
 export const borrarFoco = id => F.deleteDoc(doc("focos", id));
 

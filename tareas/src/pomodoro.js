@@ -11,7 +11,22 @@ const LS = "tasca.pomodoro";
 const base = { modo: "foco", estado: "parado", fin: 0, restante: 0, inicio: 0, tareaId: null, proyectoId: null, etiqueta: "", ciclos: 0, tipo: "pomodoro", acumulado: 0, minutos: 45, descansoFlow: 5, plan: null, hechos: 0 };
 let P = (() => { try { return { ...base, ...JSON.parse(localStorage.getItem(LS) || "{}") }; } catch { return { ...base }; } })();
 const subs = new Set();
-const guardar = () => { try { localStorage.setItem(LS, JSON.stringify(P)); } catch {} subs.forEach(f => f(P)); reloj(); };
+// El reloj se comparte entre tus dispositivos: cada cambio hecho aquí se sube (con la hora y quién lo hizo)
+// y lo que llega de otro dispositivo, si es más nuevo, se aplica tal cual.
+const DISP = (() => { try { let d = localStorage.getItem("tasca.dispositivo"); if (!d) localStorage.setItem("tasca.dispositivo", d = Math.random().toString(36).slice(2, 10)); return d; } catch { return "x"; } })();
+let aplicando = false, tSubir = 0;
+const guardar = () => {
+  if (!aplicando) { P.t = Date.now(); P.de = DISP; }
+  try { localStorage.setItem(LS, JSON.stringify(P)); } catch {}
+  subs.forEach(f => f(P)); reloj();
+  if (!aplicando) { clearTimeout(tSubir); tSubir = setTimeout(() => D.guardarReloj(P), 200); }
+};
+function remoto(r) {
+  if (!r || r.de === DISP || (r.t || 0) <= (P.t || 0)) return;
+  aplicando = true;
+  try { P = { ...base, ...r }; programarFin(); guardar(); } finally { aplicando = false; }
+}
+D.escucharReloj(remoto);
 export const suscribir = f => { subs.add(f); f(P); return () => subs.delete(f); };
 export const estado = () => P;
 
@@ -91,7 +106,11 @@ export function saltar() { Object.assign(P, { estado: "parado", modo: "foco", ac
 
 function registrar(minutos, tipo = P.tipo, inicio = P.empezado) {
   const t = P.tareaId && S.tareas.find(x => x.id === P.tareaId);
-  D.guardarFoco({ inicio: inicio || Date.now() - minutos * 60000, minutos, tipo, metodo: P.tipo, tareaId: t?.id || null, proyectoId: t?.proyectoId || P.proyectoId || null, titulo: t?.titulo || P.etiqueta || null });
+  inicio = inicio || Date.now() - minutos * 60000;
+  // si el bloque lo acaba otro dispositivo a la vez, el registro es el mismo (mismo id) y no se cuenta dos veces
+  if ((P.registrado || 0) >= inicio) return;
+  P.registrado = inicio;
+  D.guardarFoco({ id: "f" + Math.round(inicio / 1000) + tipo, inicio, minutos, tipo, metodo: P.tipo, tareaId: t?.id || null, proyectoId: t?.proyectoId || P.proyectoId || null, titulo: t?.titulo || P.etiqueta || null });
   if (t && tipo === "pomodoro") D.cambiarTarea(t.id, { pomos: (t.pomos || 0) + 1 });
 }
 
