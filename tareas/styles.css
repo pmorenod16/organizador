@@ -777,3 +777,5 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--s
 .miembros .avatar.suave { background: var(--fondo-2, #eee); color: var(--suave); }
 .bloque { display: block; }
 .hoja-compartir .btn.peligro { margin-top: 18px; }
+.plan-import { font-size: 13px; color: var(--suave); margin: 6px 0 0; }
+.plan-import b { color: var(--texto); }

@@ -106,6 +106,46 @@ export function editarProyecto(id, alBorrar) {
 }
 
 // ---------------- importar CSV de Todoist ----------------
+// Si el proyecto ya existe, el CSV lo ACTUALIZA: cada tarea del CSV se busca por su título (y los pasos dentro
+// de su tarea); las que ya están se ponen al día (fecha, hora, prioridad, notas, sección…), las nuevas se añaden
+// y con las que ya no salen en el CSV haces lo que elijas. Lo propio de Tasca (avisos, sesiones, pomodoros) se conserva.
+const CAMPOS = ["fecha", "hora", "prioridad", "notas", "seccion", "repetir", "duracion", "etiquetas", "orden"];
+const igual = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
+
+/** Qué pasaría al meter el lote l en el proyecto pid */
+function plan(l, pid, conAviso) {
+  const existentes = S.tareas.filter(t => t.proyectoId === pid);
+  const usadas = new Set();
+  const buscar = (titulo, padreId, fecha) => {
+    const c = existentes.filter(t => !usadas.has(t.id) && (t.padreId || null) === padreId && normal(t.titulo) === normal(titulo));
+    return c.find(t => (t.fecha || null) === (fecha || null)) || c.find(t => !t.hecha) || c[0] || null;
+  };
+  const ids = new Map(), nuevas = [], cambios = [], base = Date.now();
+  let iguales = 0;
+  for (const [k, t] of l.tareas.entries()) {
+    const padreId = t.padreRef ? ids.get(t.padreRef) || null : null;
+    const x = t.padreRef && !padreId ? null : buscar(t.titulo, padreId, t.fecha);
+    const datos = { fecha: t.fecha, hora: t.hora, prioridad: t.prioridad, notas: t.notas, seccion: t.padreRef ? null : t.seccion, repetir: t.repetir, duracion: t.duracion, etiquetas: t.etiquetas, orden: t.orden };
+    if (x) {
+      usadas.add(x.id); ids.set(t.ref, x.id);
+      const c = {};
+      for (const f of CAMPOS) if (!igual(x[f], datos[f]) && !(f === "notas" && !datos.notas && x.notas)) c[f] = datos[f]; // no borra notas tuyas si el CSV no trae
+      if (c.hora && conAviso && !x.recordatorios) c.recordatorios = [10];
+      const k2 = Object.keys(c);
+      if (k2.length) cambios.push([x.id, c, x]);
+      if (!k2.some(f => f !== "orden")) iguales++; // reordenar no cuenta como «actualizada»
+    } else {
+      const id = D.nuevoId() + k.toString(36);
+      ids.set(t.ref, id);
+      nuevas.push(D.nuevaTarea({ id, titulo: t.titulo, proyectoId: pid, padreId, ...datos, recordatorios: conAviso && t.hora ? [10] : null, creado: base + k, origen: "todoist" }));
+    }
+  }
+  const sobran = existentes.filter(t => !usadas.has(t.id) && !t.hecha);
+  return { nuevas, cambios, iguales, sobran };
+}
+const reales = p => p.cambios.filter(([, c]) => Object.keys(c).some(f => f !== "orden")).length;
+const resumenPlan = p => [p.nuevas.length && `${p.nuevas.length} nuevas`, reales(p) && `${reales(p)} se actualizan`, p.iguales && `${p.iguales} sin cambios`, p.sobran.length && `${p.sobran.length} ya no están en el CSV`].filter(Boolean).join(" · ") || "Nada que cambiar";
+
 export async function importar(archivos, destinoFijo = null) {
   const hoy = hoyISO();
   const lotes = [];
@@ -122,25 +162,42 @@ export async function importar(archivos, destinoFijo = null) {
       <p><b>${esc(l.archivo)}</b> · ${raiz.length} tareas y ${l.tareas.length - raiz.length} pasos${fechas.length ? ` · ${esc(fechaBonita(fechas[0]))} → ${esc(fechaBonita(fechas[fechas.length - 1]))}` : ""}</p>
       ${l.tareas.length ? `<label>Proyecto <select data-destino>
         <option value="nuevo" ${l.destino === "nuevo" ? "selected" : ""}>Nuevo: «${esc(l.nombre)}»</option>
-        ${S.proyectos.map(p => `<option value="${esc(p.id)}" ${l.destino === p.id ? "selected" : ""}>${esc(p.nombre)}</option>`).join("")}
-      </select></label><input data-nombre value="${esc(l.nombre)}" ${l.destino === "nuevo" ? "" : "hidden"} aria-label="Nombre del proyecto nuevo">` : ""}
+        ${S.proyectos.map(p => `<option value="${esc(p.id)}" ${l.destino === p.id ? "selected" : ""}>${esc(p.nombre)} (actualizar)</option>`).join("")}
+      </select></label><input data-nombre value="${esc(l.nombre)}" ${l.destino === "nuevo" ? "" : "hidden"} aria-label="Nombre del proyecto nuevo">
+      <p class="plan-import" data-plan></p>` : ""}
       ${l.avisos.length ? `<details class="aviso"><summary>${l.avisos.length} aviso${l.avisos.length > 1 ? "s" : ""}</summary><ul>${l.avisos.slice(0, 30).map(x => `<li>${esc(x)}</li>`).join("")}</ul></details>` : ""}
       ${l.tareas.length ? `<ul class="muestra">${raiz.slice(0, 4).map(t => `<li>${esc(t.titulo)} <small class="suave">${t.fecha ? esc(fechaBonita(t.fecha)) + (t.hora ? " " + t.hora : "") : "sin fecha"} · ${l.tareas.filter(x => x.padreRef === t.ref).length} pasos</small></li>`).join("")}${raiz.length > 4 ? `<li class="suave">… y ${raiz.length - 4} más</li>` : ""}</ul>` : ""}
     </div>`;
   }).join("")}
     <label class="fila-ajuste"><span>Aviso 10 min antes en las tareas con hora</span><input type="checkbox" class="sw" data-con-aviso checked></label>
-    <label class="fila-ajuste"><span>Saltar las que ya tengo (mismo título y fecha)</span><input type="checkbox" class="sw" data-saltar checked></label>
+    <label class="fila-ajuste" data-fila-sobran><span>Tareas que ya no están en el CSV<small class="suave bloque">Si las has hecho o borrado en Todoist</small></span><select data-sobran>
+      <option value="dejar">Dejarlas como están</option><option value="hechas">Marcarlas como hechas</option><option value="borrar">Borrarlas</option></select></label>
     <p class="suave peque" data-progreso></p>
     <div class="botones"><button class="btn" data-cancelar>Cancelar</button><button class="btn primario" data-ok ${lotes.some(l => l.tareas.length) ? "" : "disabled"}>Importar</button></div></div>`, { clase: "hoja-importar" });
-  el.querySelectorAll(".lote").forEach(div => {
-    const sel = div.querySelector("[data-destino]");
-    sel?.addEventListener("change", () => { div.querySelector("[data-nombre]").hidden = sel.value !== "nuevo"; });
-  });
+  const conAviso = () => el.querySelector("[data-con-aviso]").checked;
+  const refrescar = () => {
+    let haySobran = false;
+    el.querySelectorAll(".lote").forEach(div => {
+      const sel = div.querySelector("[data-destino]"); if (!sel) return;
+      const l = lotes[div.dataset.i];
+      div.querySelector("[data-nombre]").hidden = sel.value !== "nuevo";
+      const out = div.querySelector("[data-plan]");
+      if (sel.value === "nuevo") { out.textContent = "Se crea un proyecto nuevo con todas las tareas."; return; }
+      const p = plan(l, sel.value, conAviso());
+      haySobran ||= p.sobran.length > 0;
+      out.innerHTML = `<b>Actualizar:</b> ${esc(resumenPlan(p))}`;
+    });
+    el.querySelector("[data-fila-sobran]").hidden = !haySobran;
+  };
+  el.querySelectorAll("[data-destino]").forEach(sel => sel.addEventListener("change", refrescar));
+  el.querySelector("[data-con-aviso]").addEventListener("change", refrescar);
+  refrescar();
   el.querySelector("[data-cancelar]").onclick = () => el.cerrar();
   el.querySelector("[data-ok]").onclick = async () => {
     const btn = el.querySelector("[data-ok]"); btn.disabled = true;
-    const conAviso = el.querySelector("[data-con-aviso]").checked, saltar = el.querySelector("[data-saltar]").checked;
-    let total = 0, saltadas = 0, primerProyecto = null;
+    const sobran = el.querySelector("[data-sobran]").value;
+    const cuenta = { nuevas: 0, cambios: 0, iguales: 0, sobran: 0 };
+    let primerProyecto = null;
     try {
       for (const [i, l] of lotes.entries()) {
         if (!l.tareas.length) continue;
@@ -148,26 +205,19 @@ export async function importar(archivos, destinoFijo = null) {
         let pid = div.querySelector("[data-destino]").value;
         if (pid === "nuevo") pid = D.guardarProyecto({ nombre: div.querySelector("[data-nombre]").value.trim() || l.nombre }).id;
         primerProyecto ||= pid;
-        const ya = new Set(S.tareas.filter(t => t.proyectoId === pid).map(t => normal(t.titulo) + "|" + (t.fecha || "") + "|" + (t.padreId ? "s" : "r")));
-        const ids = new Map(), nuevas = [], omitidas = new Set();
-        const base = Date.now();
-        for (const [k, t] of l.tareas.entries()) {
-          if (t.padreRef && omitidas.has(t.padreRef)) { omitidas.add(t.ref); continue; }
-          if (saltar && !t.padreRef && ya.has(normal(t.titulo) + "|" + (t.fecha || "") + "|r")) { omitidas.add(t.ref); saltadas++; continue; }
-          const id = D.nuevoId() + k.toString(36);
-          ids.set(t.ref, id);
-          nuevas.push(D.nuevaTarea({
-            id, titulo: t.titulo, notas: t.notas, proyectoId: pid, padreId: t.padreRef ? ids.get(t.padreRef) || null : null,
-            seccion: t.padreRef ? null : t.seccion, fecha: t.fecha, hora: t.hora, duracion: t.duracion, prioridad: t.prioridad,
-            etiquetas: t.etiquetas, repetir: t.repetir, recordatorios: conAviso && t.hora ? [10] : null,
-            orden: t.orden, creado: base + k, origen: "todoist",
-          }));
-        }
-        await D.guardarMuchas(nuevas, (n, de) => { el.querySelector("[data-progreso]").textContent = `${l.archivo}: ${n}/${de}…`; });
-        total += nuevas.length;
+        const p = plan(l, pid, conAviso());
+        const prog = (n, de) => { el.querySelector("[data-progreso]").textContent = `${l.archivo}: ${n}/${de}…`; };
+        await D.guardarMuchas(p.nuevas, prog);
+        await D.cambiarMuchas(p.cambios.map(([id, c]) => [id, c]));
+        if (sobran === "hechas" && p.sobran.length) await D.cambiarMuchas(p.sobran.map(t => [t.id, { hecha: true, hechaEn: Date.now() }]));
+        if (sobran === "borrar") for (const t of p.sobran.filter(t => !p.sobran.some(x => x.id === t.padreId))) await D.borrarTarea(t.id);
+        cuenta.nuevas += p.nuevas.length; cuenta.cambios += reales(p); cuenta.iguales += p.iguales;
+        if (sobran !== "dejar") cuenta.sobran += p.sobran.length;
       }
       el.cerrar();
-      toast(`Importadas ${total} tareas y pasos${saltadas ? ` (${saltadas} ya estaban)` : ""}`, { ms: 5000 });
+      const partes = [cuenta.nuevas && `${cuenta.nuevas} nuevas`, cuenta.cambios && `${cuenta.cambios} actualizadas`, cuenta.iguales && `${cuenta.iguales} sin cambios`,
+        cuenta.sobran && `${cuenta.sobran} ${sobran === "borrar" ? "borradas" : "marcadas como hechas"}`].filter(Boolean);
+      toast(partes.length ? partes.join(" · ") : "Todo estaba al día", { ms: 6000 });
       if (primerProyecto) location.hash = "#/proyecto/" + primerProyecto;
     } catch (e) {
       console.error(e); btn.disabled = false;

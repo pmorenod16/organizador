@@ -175,6 +175,15 @@ export async function guardarMuchas(tareas, alAvanzar) {
   }
 }
 
+/** Cambia muchas tareas de golpe: [[id, cambios], …] (para actualizar un proyecto desde un CSV) */
+export async function cambiarMuchas(lista) {
+  for (let i = 0; i < lista.length; i += 400) {
+    const lote = F.writeBatch(db);
+    for (const [id, c] of lista.slice(i, i + 400)) lote.update(refTarea(id), limpio({ ...c, editado: Date.now() }));
+    await lote.commit();
+  }
+}
+
 // ---------- pomodoro ----------
 export function guardarFoco(f) { const x = { id: nuevoId(), ...f }; F.setDoc(doc("focos", x.id), limpio(x)); return x; }
 export const borrarFoco = id => F.deleteDoc(doc("focos", id));
