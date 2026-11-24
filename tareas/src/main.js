@@ -123,7 +123,7 @@ async function primeraCarga() {
     await D.guardarAjustes({ calendarios: l });
     if (l.length) toast(`He conectado ${l.length === 1 ? "tu calendario" : `tus ${l.length} calendarios`} del Organizador`, { ms: 5000 });
   }
-  Cal.recargar();
+  Cal.alAbrir();
 }
 Cal.alCambiarEventos(() => { if (S.listo) pintar(); });
 setInterval(() => { if (S.listo && !document.hidden) Cal.recargar(); }, 10 * 60 * 1000);
@@ -447,7 +447,7 @@ document.addEventListener("visibilitychange", () => {
     notificarWeb(`${e.modo === "foco" ? P.metodo().nombre : P.NOMBRES[e.modo]} en marcha${e.plan ? ` · bloque ${Math.min(e.hechos + (e.modo === "foco" ? 1 : 0), e.plan)} de ${e.plan}` : ""}`, `Termina a las ${fin} (quedan ${Math.ceil((e.fin - Date.now()) / 60000)} min).`, "reloj");
   }
 });
-document.addEventListener("visibilitychange", () => { if (!document.hidden) { P.comprobar(); Bl.sincronizar(P.estado(), P.subiendo(), true); if (S.listo) { pintar(); Cal.recargar(); W.alVolver(accionesWidget); } } });
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { P.comprobar(); Bl.sincronizar(P.estado(), P.subiendo(), true); if (S.listo) { pintar(); Cal.alAbrir(); W.alVolver(accionesWidget); } } });
 document.addEventListener("fullscreenchange", () => { if (!document.fullscreenElement && UI.pantallaCompleta) { UI.pantallaCompleta = false; pintar(); } });
 $("#miniFoco").addEventListener("click", e => { const b = e.target.closest("[data-mini-p]"); if (b) { e.preventDefault(); P[b.dataset.miniP](); } });
 

@@ -25,6 +25,9 @@ export const lista = () => (S.ajustes.calendarios || []).filter(c => c.url);
 const activos = () => (S.ajustes.verEventos === false ? [] : lista().filter(c => c.activo !== false));
 const firma = () => activos().map(c => c.url).join("|");
 
+/** Al abrir la app (o volver a ella): siempre trae los eventos al día, salvo que se acaben de traer hace menos de un minuto */
+export const alAbrir = () => recargar(Date.now() - cargado > 60 * 1000);
+
 /** Descarga y expande los calendarios (si hace falta o si se fuerza) */
 export function recargar(forzar = false) {
   const cals = activos();
